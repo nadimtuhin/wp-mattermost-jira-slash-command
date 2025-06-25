@@ -502,6 +502,7 @@ class WP_MM_Slash_Jira_Admin {
                         <li><code>/jira assign PROJ-123 developer@company.com</code> - Assigns issue to user by email</li>
                         <li><code>/jira find developer@company.com</code> - Search for a user by email address</li>
                         <li><code>/jira bind PROJ</code> - Binds current channel to PROJ project</li>
+                        <li><code>/jira unbind</code> - Removes current channel's project binding</li>
                         <li><code>/jira status</code> - Shows current project binding and statistics</li>
                         <li><code>/jira link</code> - Get links for creating new tasks</li>
                         <li><code>/jira board</code> - Get links to Jira boards and backlogs</li>

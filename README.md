@@ -64,6 +64,159 @@ Configure the slash command in Mattermost:
    - **Autocomplete Description**: Create Jira issues from chat
    - **Autocomplete Hint**: `create [PROJECT-KEY-ISSUE-NUMBER] Title`
 
+## Project Management
+
+### Binding Channels to Projects
+
+There are two ways to associate Mattermost channels with Jira projects:
+
+#### Method 1: Admin Interface (Recommended)
+1. Go to **Settings > MM Jira Integration** in WordPress admin
+2. Navigate to the **"Channel Mappings"** tab
+3. Add new mappings with:
+   - **Channel ID**: The Mattermost channel ID (e.g., `fukxanjgjbnp7ng383at53k1sy`)
+   - **Channel Name**: Display name for the channel (e.g., `general`)
+   - **Jira Project Key**: The Jira project key (e.g., `PROJ`, `DEV`, `BUG`)
+
+#### Method 2: Channel Binding Command
+Use the `/jira bind` command directly in any Mattermost channel:
+
+```
+/jira bind PROJECT-KEY
+```
+
+**Examples:**
+- `/jira bind PROJ` - Binds current channel to PROJ project
+- `/jira bind DEV` - Binds current channel to DEV project
+- `/jira bind BUG` - Binds current channel to BUG project
+
+**Benefits of Channel Binding:**
+- Create issues without specifying project key: `/jira create Fix login bug`
+- Use quick shortcuts: `/jira bug Fix login issue`, `/jira task Update docs`
+- Get project-specific links: `/jira link`, `/jira board`
+- View channel statistics: `/jira status`
+
+### Unbinding Channels from Projects
+
+To remove a channel's project binding:
+
+```
+/jira unbind
+```
+
+**What happens when you unbind:**
+- The channel is no longer mapped to any Jira project
+- You must specify project keys in all commands: `/jira create PROJ Title`
+- Quick shortcuts will no longer work without project keys
+- Use `/jira bind PROJECT-KEY` to bind to a different project
+
+**Example:**
+- `/jira unbind` - Removes current channel's project binding
+- After unbinding, use `/jira create PROJ Fix bug` instead of `/jira create Fix bug`
+
+### Viewing Available Projects
+
+To see all available Jira projects and their keys:
+
+```
+/jira projects
+```
+
+This command will:
+- List all projects in your Jira instance
+- Group projects alphabetically for easy browsing
+- Show project keys, names, and direct links to Jira
+- Provide instructions for binding and creating issues
+
+**Example Output:**
+```
+📋 **Available Jira Projects**
+
+**Total Projects:** 15
+
+**A**
+• **API** - [API Development](https://your-domain.atlassian.net/browse/API)
+• **APP** - [Application Development](https://your-domain.atlassian.net/browse/APP)
+
+**B**
+• **BUG** - [Bug Tracking](https://your-domain.atlassian.net/browse/BUG)
+
+**D**
+• **DEV** - [Development](https://your-domain.atlassian.net/browse/DEV)
+
+**T**
+• **TEST** - [Testing](https://your-domain.atlassian.net/browse/TEST)
+
+**To bind this channel to a project:**
+• `/jira bind PROJECT-KEY` - Replace PROJECT-KEY with one of the keys above
+
+**To create issues in a specific project:**
+• `/jira create PROJECT-KEY Title` - Create issue in specific project
+• `/jira bug PROJECT-KEY Title` - Create bug in specific project
+• `/jira task PROJECT-KEY Title` - Create task in specific project
+• `/jira story PROJECT-KEY Title` - Create story in specific project
+```
+
+### Checking Channel Status
+
+To see the current project binding and channel statistics:
+
+```
+/jira status
+```
+
+This will show:
+- Current project binding (if any)
+- When the binding was created
+- Total issues created in this channel
+- Recent activity statistics
+- Available commands for the current setup
+
+### Creating Issues Without Binding
+
+You can create issues in specific projects without binding the channel:
+
+```
+/jira create PROJECT-KEY Title
+/jira create PROJ-123 Title
+```
+
+**Examples:**
+- `/jira create PROJ Fix login bug` - Creates issue in PROJ project
+- `/jira create DEV-456 Add new feature` - Creates issue in DEV project
+- `/jira bug BUG Fix critical issue` - Creates bug in BUG project
+- `/jira task TEST Update test cases` - Creates task in TEST project
+
+### Project Key Requirements
+
+Jira project keys must:
+- Contain only uppercase letters and numbers (A-Z, 0-9)
+- Be 10 characters or less
+- Exist in your Jira instance
+
+**Valid examples:** `PROJ`, `DEV`, `BUG`, `TEST`, `API123`
+**Invalid examples:** `project` (lowercase), `PROJECT-KEY` (hyphens), `VERYLONGPROJECTKEY` (too long)
+
+### Quick Reference: Project Management Commands
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| `/jira projects` | List all available Jira projects | `/jira projects` |
+| `/jira bind PROJECT-KEY` | Bind current channel to a project | `/jira bind PROJ` |
+| `/jira unbind` | Remove current channel's project binding | `/jira unbind` |
+| `/jira status` | Check current project binding and stats | `/jira status` |
+| `/jira create PROJECT-KEY Title` | Create issue in specific project | `/jira create PROJ Fix bug` |
+| `/jira create Title` | Create issue in bound project | `/jira create Fix bug` |
+| `/jira bug PROJECT-KEY Title` | Create bug in specific project | `/jira bug PROJ Fix bug` |
+| `/jira task PROJECT-KEY Title` | Create task in specific project | `/jira task PROJ Update docs` |
+| `/jira story PROJECT-KEY Title` | Create story in specific project | `/jira story PROJ Add feature` |
+
+**Workflow Examples:**
+1. **First time setup**: `/jira projects` → `/jira bind PROJ` → `/jira create Fix bug`
+2. **Quick issue creation**: `/jira bug Fix login issue` (if channel is bound)
+3. **One-off issue**: `/jira create DEV-123 Add feature` (no binding needed)
+4. **Change project binding**: `/jira unbind` → `/jira bind DEV` → `/jira create Fix bug`
+
 ## Usage
 
 ### Basic Commands
@@ -80,6 +233,7 @@ Configure the slash command in Mattermost:
 - `/jira assign PROJ-123 developer@company.com` - Assigns issue to user by email
 - `/jira find developer@company.com` - Search for a user by email address
 - `/jira bind PROJ` - Binds current channel to Jira project
+- `/jira unbind` - Removes current channel's project binding
 - `/jira status` - Shows current project binding and statistics
 - `/jira link` - Get links for creating new tasks
 - `/jira board` - Get links to Jira boards and backlogs
@@ -128,6 +282,7 @@ View comprehensive information about any Jira issue:
 /jira assign PROJ-123 developer@company.com
 /jira find developer@company.com
 /jira bind PROJ
+/jira unbind
 /jira status
 /jira link
 /jira board
@@ -197,16 +352,52 @@ The webhook expects these parameters from Mattermost:
 ### Common Issues
 
 1. **"No Jira project mapped to this channel"**
-   - Add a channel mapping in the admin interface
-   - Or specify a project key in the command
+   
+   This error occurs when you try to create an issue without specifying a project key and the current channel is not bound to any Jira project.
+   
+   **Solutions:**
+   
+   **Option A: Bind the channel to a project (Recommended)**
+   - Use `/jira bind PROJECT-KEY` to bind the current channel to a Jira project
+   - Example: `/jira bind PROJ` or `/jira bind DEV`
+   - After binding, you can use simple commands like `/jira create Fix login bug`
+   
+   **Option B: Specify project key in command**
+   - Use `/jira create PROJECT-KEY Title` to create issues in specific projects
+   - Example: `/jira create PROJ Fix login bug` or `/jira create DEV-123 Add feature`
+   
+   **Option C: Use admin interface**
+   - Go to **Settings > MM Jira Integration > Channel Mappings**
+   - Add a mapping for the channel ID to a Jira project key
+   
+   **To find available project keys:**
+   - Use `/jira projects` to see all available Jira projects and their keys
+   - This will show you the exact project keys you can use
 
 2. **"Jira configuration not set up"**
    - Configure Jira domain and API key in settings
+   - Go to **Settings > MM Jira Integration** and fill in:
+     - Jira Domain (e.g., `your-domain.atlassian.net`)
+     - API Key (format: `email:api_token`)
+     - Webhook Token
 
 3. **"Failed to create issue"**
-   - Check Jira API credentials
-   - Verify project key exists in Jira
-   - Check Jira API permissions
+   - Check Jira API credentials are correct
+   - Verify the project key exists in your Jira instance
+   - Check Jira API permissions for the user
+   - Use `/jira projects` to verify available project keys
+   - Check WordPress error logs for detailed error messages
+
+4. **"Invalid project key format"**
+   - Project keys must contain only uppercase letters and numbers (A-Z, 0-9)
+   - Project keys must be 10 characters or less
+   - Use `/jira projects` to see valid project keys
+   - Examples: `PROJ`, `DEV`, `BUG`, `TEST` (valid) vs `project`, `PROJECT-KEY` (invalid)
+
+5. **"Jira domain not configured"**
+   - Go to **Settings > MM Jira Integration**
+   - Set the Jira Domain field (e.g., `your-domain.atlassian.net`)
+   - Make sure to use the correct domain format without `https://`
 
 ### Debug Mode
 
@@ -216,6 +407,15 @@ Enable WordPress debug mode to see detailed error messages:
 define('WP_DEBUG', true);
 define('WP_DEBUG_LOG', true);
 ```
+
+### Getting Help
+
+If you're still having issues:
+
+1. **Check the logs**: Go to **Settings > MM Jira Integration > Invocation Logs** to see detailed request/response logs
+2. **Test connectivity**: Use `/jira projects` to test if Jira API is working
+3. **Verify credentials**: Double-check your Jira domain and API key
+4. **Check permissions**: Ensure your Jira user has permission to create issues in the target project
 
 ## Development
 

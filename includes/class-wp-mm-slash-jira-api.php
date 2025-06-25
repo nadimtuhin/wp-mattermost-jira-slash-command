@@ -199,6 +199,9 @@ class WP_MM_Slash_Jira_API {
                 case 'bind':
                     $response = $this->bind_channel_project($channel_id, $channel_name, $text, $user_name);
                     break;
+                case 'unbind':
+                    $response = $this->unbind_channel_project($channel_id, $channel_name, $text, $user_name);
+                    break;
                 case 'status':
                     $response = $this->check_channel_status($channel_id, $channel_name, $text, $user_name);
                     break;
@@ -808,6 +811,49 @@ class WP_MM_Slash_Jira_API {
     }
     
     /**
+     * Unbind a channel from a Jira project key
+     */
+    private function unbind_channel_project($channel_id, $channel_name, $text, $user_name) {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'mm_jira_mappings';
+        
+        // Check if mapping exists for this channel
+        $existing = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM $table_name WHERE channel_id = %s",
+            $channel_id
+        ));
+        
+        if (!$existing) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ No project binding found for this channel.\n\n**Channel:** #{$channel_name}\n\nThis channel is not currently mapped to any Jira project."
+            );
+        }
+        
+        $project_key = $existing->jira_project_key;
+        
+        // Delete the mapping
+        $result = $wpdb->delete(
+            $table_name,
+            array('channel_id' => $channel_id),
+            array('%s')
+        );
+        
+        if ($result !== false && $result > 0) {
+            return array(
+                'response_type' => 'in_channel',
+                'text' => "✅ Channel binding removed successfully!\n\n**Channel:** #{$channel_name}\n**Removed Project:** {$project_key}\n**Removed by:** @{$user_name}\n\n**What this means:**\n• You can no longer use `/jira create Title` without specifying a project\n• You must specify project keys in commands: `/jira create PROJ Title`\n• Use `/jira bind PROJECT-KEY` to bind to a different project\n• Use `/jira projects` to see available projects"
+            );
+        } else {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Failed to remove channel binding. Please try again or contact an administrator."
+            );
+        }
+    }
+    
+    /**
      * Check channel binding status
      */
     private function check_channel_status($channel_id, $channel_name, $text, $user_name) {
@@ -872,6 +918,7 @@ class WP_MM_Slash_Jira_API {
         $status_text .= "**Available commands:**\n" .
                        "• `/jira create Title` - Create issue in {$mapping->jira_project_key}\n" .
                        "• `/jira bind NEWPROJ` - Change to different project\n" .
+                       "• `/jira unbind` - Remove current project binding\n" .
                        "• `/jira assign PROJ-123 user@example.com` - Assign issue\n" .
                        "• `/jira help` - Show all commands\n\n" .
                        "**Quick examples:**\n" .
@@ -1694,6 +1741,8 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira find user@example.com` - Search for a user by email address\n\n" .
                      "**Bind channel to project:**\n" .
                      "• `/jira bind PROJECT-KEY` - Binds current channel to Jira project\n\n" .
+                     "**Unbind channel from project:**\n" .
+                     "• `/jira unbind` - Removes current channel's project binding\n\n" .
                      "**Check channel status:**\n" .
                      "• `/jira status` - Shows current project binding and statistics\n\n" .
                      "**Get Jira links:**\n" .
@@ -1713,6 +1762,7 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira create PROJ-456 Add new feature`\n" .
                      "• `/jira assign PROJ-123 developer@company.com`\n" .
                      "• `/jira bind PROJ` - Bind channel to PROJ project\n" .
+                     "• `/jira unbind` - Remove channel's project binding\n" .
                      "• `/jira status` - Check current binding status\n" .
                      "• `/jira link` - Get task creation links\n" .
                      "• `/jira board` - Get board links\n\n" .

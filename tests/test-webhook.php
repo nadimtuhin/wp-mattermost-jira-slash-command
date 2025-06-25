@@ -171,6 +171,60 @@ if ($bind_response) {
 
 echo "\nAll tests completed.\n";
 
+echo "\n--- Testing Unbind Command ---\n";
+
+// Test unbind command
+$unbind_test_data = array(
+    'token' => $webhook_token,
+    'channel_id' => 'fukxanjgjbnp7ng383at53k1sy',
+    'channel_name' => 'WWW',
+    'text' => 'unbind',
+    'user_name' => 'testuser',
+    'team_domain' => 'team-awesome',
+    'team_id' => 'wx4zz8t4ttgmtxqiwfohijayzc',
+    'user_id' => 'erj6qck3rfgtujs86w5r6rckzh',
+    'command' => '/jira',
+    'response_url' => 'http://localhost/hooks/commands/test',
+    'trigger_id' => 'test-trigger-id'
+);
+
+echo "Unbind test data: " . json_encode($unbind_test_data, JSON_PRETTY_PRINT) . "\n\n";
+
+// Send POST request for unbind command
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $webhook_url);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($unbind_test_data));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+    'Content-Type: application/x-www-form-urlencoded',
+    'User-Agent: Test-Script/1.0'
+));
+
+$unbind_response = curl_exec($ch);
+$unbind_http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$unbind_error = curl_error($ch);
+curl_close($ch);
+
+echo "Unbind HTTP Status Code: $unbind_http_code\n";
+if ($unbind_error) {
+    echo "Unbind cURL Error: $unbind_error\n";
+}
+
+echo "Unbind Response:\n";
+if ($unbind_response) {
+    $unbind_decoded = json_decode($unbind_response, true);
+    if ($unbind_decoded) {
+        echo json_encode($unbind_decoded, JSON_PRETTY_PRINT) . "\n";
+    } else {
+        echo $unbind_response . "\n";
+    }
+} else {
+    echo "No unbind response received\n";
+}
+
+echo "\nAll tests completed.\n";
+
 echo "\n--- Testing Status Command ---\n";
 
 // Test status command

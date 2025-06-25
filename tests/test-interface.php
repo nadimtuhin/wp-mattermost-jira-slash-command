@@ -487,6 +487,7 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
                         <div class="quick-command manage" data-command="bind PROJ">bind PROJ</div>
                         <div class="quick-command manage" data-command="bind BUG">bind BUG</div>
                         <div class="quick-command manage" data-command="bind STORY">bind STORY</div>
+                        <div class="quick-command manage" data-command="unbind">unbind</div>
                         <div class="quick-command manage" data-command="status">status</div>
                         
                         <!-- Links and Help -->
@@ -532,6 +533,7 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
                         <div>• <code>/jira assign</code> - Assign issues to users</div>
                         <div>• <code>/jira find user@example.com</code> - Search for users by email</div>
                         <div>• <code>/jira bind</code> - Bind channels to projects</div>
+                        <div>• <code>/jira unbind</code> - Remove channel project binding</div>
                         <div>• <code>/jira status</code>, <code>/jira link</code>, <code>/jira board</code> - Channel management</div>
                         <div>• <code>/jira projects</code> - List all available Jira projects</div>
                         <div>• <code>/jira help</code> - Show all available commands</div>
