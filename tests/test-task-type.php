@@ -248,6 +248,8 @@ curl -X POST "<?php echo esc_url(rest_url('jira/mattermost/slash/jira')); ?>" \
                 • /jira bug PROJECT-KEY Title<br>
                 • /jira task PROJECT-KEY Title<br>
                 • /jira story PROJECT-KEY Title<br><br>
+                <strong>View Command:</strong><br>
+                • /jira view ISSUE-KEY<br><br>
                 <strong>Examples:</strong><br>
                 • /jira create Bug:Fix login issue<br>
                 • /jira bug Fix login issue<br>
@@ -255,8 +257,9 @@ curl -X POST "<?php echo esc_url(rest_url('jira/mattermost/slash/jira')); ?>" \
                 • /jira story PROJ Add new feature<br>
                 • /jira create Task:Update documentation<br>
                 • /jira task Update documentation<br>
+                • /jira view PROJ-123<br>
                 • /jira create Epic:Major system overhaul<br><br>
-                <strong>Response Format:</strong> Should include the issue type in the response<br><br>
+                <strong>View Command Response:</strong> Should display detailed issue information including status, description, comments, story points, etc.<br><br>
                 <strong>Fallback:</strong> If no type specified, uses channel name detection or defaults to 'Task'
             </div>
         </div>
@@ -304,7 +307,7 @@ curl -X POST "<?php echo esc_url(rest_url('jira/mattermost/slash/jira')); ?>" \
             <p>Run the commands above and check the responses. Expected results:</p>
             
             <div class="test-result success">
-                <strong>✅ Success Case:</strong><br>
+                <strong>✅ Success Case (Issue Creation):</strong><br>
                 Response should include the issue type:<br>
                 "✅ Issue created successfully!<br>
                 **Issue:** PROJ-123<br>
@@ -312,6 +315,27 @@ curl -X POST "<?php echo esc_url(rest_url('jira/mattermost/slash/jira')); ?>" \
                 **Created by:** @username<br>
                 **Project:** PROJ<br>
                 <strong>**Type:** Bug</strong><br>
+                [View in Jira](...)"
+            </div>
+
+            <div class="test-result success">
+                <strong>✅ Success Case (View Issue):</strong><br>
+                Response should display detailed issue information:<br>
+                "📋 **Issue Details: PROJ-123**<br><br>
+                **Summary:** Fix login issue<br>
+                **Type:** Bug<br>
+                **Status:** In Progress<br>
+                **Priority:** High<br>
+                **Assignee:** John Doe<br>
+                **Reporter:** Jane Smith<br>
+                **Story Points:** 5<br>
+                **Labels:** frontend, critical<br>
+                **Components:** Authentication<br><br>
+                **Description:**<br>
+                The login functionality is broken...<br><br>
+                **Comments (3):**<br>
+                • **John Doe** (Dec 15, 2023 2:30 PM): Working on this...<br>
+                • **Jane Smith** (Dec 15, 2023 1:45 PM): Please prioritize...<br><br>
                 [View in Jira](...)"
             </div>
 
@@ -323,6 +347,65 @@ curl -X POST "<?php echo esc_url(rest_url('jira/mattermost/slash/jira')); ?>" \
             <div class="test-result error">
                 <strong>❌ Error Case (Empty Title):</strong><br>
                 Should show error: "Please provide a title for the issue"
+            </div>
+
+            <div class="test-result error">
+                <strong>❌ Error Case (Invalid Issue Key):</strong><br>
+                Should show error: "Invalid issue key format. Please use format: PROJECT-123"
+            </div>
+
+            <div class="test-result error">
+                <strong>❌ Error Case (Issue Not Found):</strong><br>
+                Should show error: "Failed to get issue details: Issue not found"
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>👁️ View Issue Details Test Commands</h2>
+            <p>Test the new view command functionality with these curl commands:</p>
+
+            <h3>1. Test View Issue Details</h3>
+            <div class="curl-command">
+curl -X POST "<?php echo esc_url(rest_url('jira/mattermost/slash/jira')); ?>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "token=<?php echo esc_attr($webhook_token); ?>" \
+  -d "channel_id=fukxanjgjbnp7ng383at53k1sy" \
+  -d "channel_name=general" \
+  -d "text=view PROJ-123" \
+  -d "user_name=<?php echo esc_attr(wp_get_current_user()->user_login); ?>"
+            </div>
+
+            <h3>2. Test View Bug Issue</h3>
+            <div class="curl-command">
+curl -X POST "<?php echo esc_url(rest_url('jira/mattermost/slash/jira')); ?>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "token=<?php echo esc_attr($webhook_token); ?>" \
+  -d "channel_id=fukxanjgjbnp7ng383at53k1sy" \
+  -d "channel_name=general" \
+  -d "text=view BUG-456" \
+  -d "user_name=<?php echo esc_attr(wp_get_current_user()->user_login); ?>"
+            </div>
+
+            <h3>3. Test View Story Issue</h3>
+            <div class="curl-command">
+curl -X POST "<?php echo esc_url(rest_url('jira/mattermost/slash/jira')); ?>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "token=<?php echo esc_attr($webhook_token); ?>" \
+  -d "channel_id=fukxanjgjbnp7ng383at53k1sy" \
+  -d "channel_name=general" \
+  -d "text=view STORY-789" \
+  -d "user_name=<?php echo esc_attr(wp_get_current_user()->user_login); ?>"
+            </div>
+
+            <h3>4. Test View Invalid Issue Key</h3>
+            <div class="curl-command">
+curl -X POST "<?php echo esc_url(rest_url('jira/mattermost/slash/jira')); ?>" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "token=<?php echo esc_attr($webhook_token); ?>" \
+  -d "channel_id=fukxanjgjbnp7ng383at53k1sy" \
+  -d "channel_name=general" \
+  -d "text=view INVALID-123" \
+  -d "user_name=<?php echo esc_attr(wp_get_current_user()->user_login); ?>"
             </div>
         </div>
 

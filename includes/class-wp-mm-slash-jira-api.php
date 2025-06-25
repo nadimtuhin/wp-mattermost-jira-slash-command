@@ -98,6 +98,9 @@ class WP_MM_Slash_Jira_API {
                 case 'story':
                     $response = $this->create_jira_issue_with_type($channel_id, $channel_name, $text, $user_name, 'Story');
                     break;
+                case 'view':
+                    $response = $this->view_jira_issue($channel_id, $channel_name, $text, $user_name);
+                    break;
                 case 'assign':
                     $response = $this->assign_jira_issue($channel_id, $channel_name, $text, $user_name);
                     break;
@@ -266,6 +269,100 @@ class WP_MM_Slash_Jira_API {
         
         // Use the existing create_jira_issue method
         return $this->create_jira_issue($channel_id, $channel_name, $reconstructed_text, $user_name);
+    }
+    
+    /**
+     * View detailed Jira issue information
+     */
+    private function view_jira_issue($channel_id, $channel_name, $text, $user_name) {
+        $parts = explode(' ', trim($text));
+        
+        // Check if we have an issue key: view ISSUE-KEY
+        if (count($parts) < 2) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Please provide an issue key. Usage: `/jira view PROJ-123`\n\n**Examples:**\n• `/jira view PROJ-123`\n• `/jira view BUG-456`\n• `/jira view STORY-789`"
+            );
+        }
+        
+        $issue_key = $parts[1];
+        
+        // Validate issue key format
+        if (!preg_match('/^[A-Z]+-\d+$/', $issue_key)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Invalid issue key format. Please use format: PROJECT-123"
+            );
+        }
+        
+        // Get detailed issue information from Jira
+        $result = $this->get_issue_details_from_jira($issue_key);
+        
+        if ($result['success']) {
+            $issue = $result['issue'];
+            
+            // Build the response text
+            $response_text = "📋 **Issue Details: {$issue_key}**\n\n";
+            
+            // Basic information
+            $response_text .= "**Summary:** {$issue['summary']}\n";
+            $response_text .= "**Type:** {$issue['issuetype']}\n";
+            $response_text .= "**Status:** {$issue['status']}\n";
+            $response_text .= "**Priority:** {$issue['priority']}\n";
+            
+            // Assignee
+            if (!empty($issue['assignee'])) {
+                $response_text .= "**Assignee:** {$issue['assignee']}\n";
+            } else {
+                $response_text .= "**Assignee:** Unassigned\n";
+            }
+            
+            // Reporter
+            if (!empty($issue['reporter'])) {
+                $response_text .= "**Reporter:** {$issue['reporter']}\n";
+            }
+            
+            // Story points
+            if (!empty($issue['story_points'])) {
+                $response_text .= "**Story Points:** {$issue['story_points']}\n";
+            }
+            
+            // Labels
+            if (!empty($issue['labels'])) {
+                $response_text .= "**Labels:** " . implode(', ', $issue['labels']) . "\n";
+            }
+            
+            // Components
+            if (!empty($issue['components'])) {
+                $response_text .= "**Components:** " . implode(', ', $issue['components']) . "\n";
+            }
+            
+            // Description
+            if (!empty($issue['description'])) {
+                $response_text .= "\n**Description:**\n{$issue['description']}\n";
+            }
+            
+            // Comments
+            if (!empty($issue['comments'])) {
+                $response_text .= "\n**Comments ({$issue['comment_count']}):**\n";
+                foreach ($issue['comments'] as $comment) {
+                    $response_text .= "• **{$comment['author']}** ({$comment['date']}): {$comment['body']}\n";
+                }
+            }
+            
+            // Links
+            $response_text .= "\n[View in Jira]({$issue['url']})";
+            
+            return array(
+                'response_type' => 'in_channel',
+                'text' => $response_text
+            );
+        } else {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Failed to get issue details: {$result['error']}"
+            );
+        }
     }
     
     /**
@@ -918,6 +1015,156 @@ class WP_MM_Slash_Jira_API {
     }
     
     /**
+     * Get detailed issue information from Jira API
+     */
+    private function get_issue_details_from_jira($issue_key) {
+        $jira_domain = get_option('wp_mm_slash_jira_jira_domain');
+        $api_key = get_option('wp_mm_slash_jira_api_key');
+        
+        if (empty($jira_domain) || empty($api_key)) {
+            return array('success' => false, 'error' => 'Jira configuration not set up');
+        }
+        
+        // Clean and validate the Jira domain
+        $jira_domain = $this->clean_jira_domain($jira_domain);
+        
+        if (empty($jira_domain)) {
+            return array('success' => false, 'error' => 'Invalid Jira domain format. Please use format: your-domain.atlassian.net');
+        }
+        
+        $url = "https://{$jira_domain}/rest/api/2/issue/{$issue_key}?expand=comments,renderedFields";
+        $auth_header = $this->get_auth_header();
+        if (!$auth_header) {
+            return array('success' => false, 'error' => 'Jira API credentials not configured');
+        }
+        
+        $request_headers = array(
+            'Authorization' => $auth_header,
+            'Accept' => 'application/json'
+        );
+        
+        $start_time = microtime(true);
+        
+        $response = wp_remote_get($url, array(
+            'headers' => $request_headers,
+            'timeout' => 30
+        ));
+        
+        $execution_time = microtime(true) - $start_time;
+        
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            $this->logger->log_jira_curl(
+                'GET',
+                $url,
+                $request_headers,
+                '',
+                0,
+                array(),
+                '',
+                $execution_time,
+                'error',
+                $error_message
+            );
+            return array('success' => false, 'error' => $error_message);
+        }
+        
+        $response_code = wp_remote_retrieve_response_code($response);
+        $response_headers = wp_remote_retrieve_headers($response);
+        $response_body = wp_remote_retrieve_body($response);
+        $result = json_decode($response_body, true);
+        
+        // Log the curl payload
+        $status = ($response_code === 200 && isset($result['key'])) ? 'success' : 'error';
+        $error_message = null;
+        if ($status === 'error') {
+            $error_message = isset($result['errorMessages']) ? implode(', ', $result['errorMessages']) : 'Unknown error';
+        }
+        
+        $this->logger->log_jira_curl(
+            'GET',
+            $url,
+            $request_headers,
+            '',
+            $response_code,
+            $response_headers,
+            $response_body,
+            $execution_time,
+            $status,
+            $error_message
+        );
+        
+        if ($response_code === 200 && isset($result['key'])) {
+            // Parse the issue data
+            $issue = array(
+                'key' => $result['key'],
+                'summary' => isset($result['fields']['summary']) ? $result['fields']['summary'] : 'No summary',
+                'issuetype' => isset($result['fields']['issuetype']['name']) ? $result['fields']['issuetype']['name'] : 'Unknown',
+                'status' => isset($result['fields']['status']['name']) ? $result['fields']['status']['name'] : 'Unknown',
+                'priority' => isset($result['fields']['priority']['name']) ? $result['fields']['priority']['name'] : 'Unset',
+                'assignee' => isset($result['fields']['assignee']['displayName']) ? $result['fields']['assignee']['displayName'] : '',
+                'reporter' => isset($result['fields']['reporter']['displayName']) ? $result['fields']['reporter']['displayName'] : '',
+                'story_points' => isset($result['fields']['customfield_10016']) ? $result['fields']['customfield_10016'] : '', // Common story points field
+                'labels' => isset($result['fields']['labels']) ? $result['fields']['labels'] : array(),
+                'components' => isset($result['fields']['components']) ? array_map(function($comp) { return $comp['name']; }, $result['fields']['components']) : array(),
+                'description' => isset($result['fields']['description']) ? $result['fields']['description'] : '',
+                'comments' => array(),
+                'comment_count' => 0,
+                'url' => "https://{$jira_domain}/browse/{$result['key']}"
+            );
+            
+            // Parse comments
+            if (isset($result['fields']['comment']['comments'])) {
+                $comments = $result['fields']['comment']['comments'];
+                $issue['comment_count'] = count($comments);
+                
+                // Get the latest 5 comments
+                $recent_comments = array_slice($comments, -5);
+                foreach ($recent_comments as $comment) {
+                    $issue['comments'][] = array(
+                        'author' => isset($comment['author']['displayName']) ? $comment['author']['displayName'] : 'Unknown',
+                        'date' => isset($comment['created']) ? date('M j, Y g:i A', strtotime($comment['created'])) : '',
+                        'body' => isset($comment['body']) ? $this->clean_comment_text($comment['body']) : ''
+                    );
+                }
+            }
+            
+            // Try alternative story points field names
+            if (empty($issue['story_points'])) {
+                $story_point_fields = array('customfield_10016', 'customfield_10008', 'customfield_10004', 'customfield_10002');
+                foreach ($story_point_fields as $field) {
+                    if (isset($result['fields'][$field]) && !empty($result['fields'][$field])) {
+                        $issue['story_points'] = $result['fields'][$field];
+                        break;
+                    }
+                }
+            }
+            
+            return array('success' => true, 'issue' => $issue);
+        } else {
+            return array('success' => false, 'error' => $error_message);
+        }
+    }
+    
+    /**
+     * Clean comment text for display
+     */
+    private function clean_comment_text($text) {
+        // Remove HTML tags
+        $text = strip_tags($text);
+        
+        // Remove extra whitespace
+        $text = preg_replace('/\s+/', ' ', $text);
+        
+        // Truncate if too long
+        if (strlen($text) > 200) {
+            $text = substr($text, 0, 200) . '...';
+        }
+        
+        return trim($text);
+    }
+    
+    /**
      * Clean and validate Jira domain
      */
     private function clean_jira_domain($domain) {
@@ -958,6 +1205,8 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira task PROJECT-KEY Title` - Creates a task issue in specific project\n" .
                      "• `/jira story Title` - Creates a story issue\n" .
                      "• `/jira story PROJECT-KEY Title` - Creates a story issue in specific project\n\n" .
+                     "**View issue details:**\n" .
+                     "• `/jira view PROJ-123` - View detailed information about an issue\n\n" .
                      "**Assign an issue:**\n" .
                      "• `/jira assign PROJ-123 user@example.com` - Assigns issue to user by email\n\n" .
                      "**Bind channel to project:**\n" .
@@ -972,6 +1221,7 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira bug Fix login issue`\n" .
                      "• `/jira task Update documentation`\n" .
                      "• `/jira story Add new feature`\n" .
+                     "• `/jira view PROJ-123` - View issue details\n" .
                      "• `/jira create Bug:Fix login bug`\n" .
                      "• `/jira create PROJ Story:Add new feature`\n" .
                      "• `/jira create Task:Update documentation`\n" .

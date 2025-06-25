@@ -69,6 +69,7 @@ Configure the slash command in Mattermost:
 - `/jira bug Fix login issue` - Creates bug issue (shortcut)
 - `/jira task Update documentation` - Creates task issue (shortcut)
 - `/jira story Add new feature` - Creates story issue (shortcut)
+- `/jira view PROJ-123` - View detailed issue information
 - `/jira create Bug:Fix login bug` - Creates bug issue with specific type
 - `/jira create PROJ Story:Add new feature` - Creates story issue with specific project
 - `/jira create Task:Update documentation` - Creates task issue with specific type
@@ -91,6 +92,21 @@ Use these shortcuts for faster issue creation:
 - `/jira story Title` - Creates a story issue in mapped project
 - `/jira story PROJECT-KEY Title` - Creates a story issue in specific project
 
+### View Issue Details
+
+View comprehensive information about any Jira issue:
+
+- `/jira view PROJ-123` - View issue details including status, description, comments, and more
+
+**Information displayed:**
+- Summary, Type, Status, Priority
+- Assignee and Reporter
+- Story Points (if available)
+- Labels and Components
+- Description
+- Recent Comments (last 5)
+- Direct link to Jira
+
 ### Command Examples
 
 ```
@@ -98,6 +114,7 @@ Use these shortcuts for faster issue creation:
 /jira bug Fix login issue
 /jira task Update documentation
 /jira story Add new feature
+/jira view PROJ-123
 /jira create Bug:Fix login bug
 /jira create PROJ Story:Add new feature
 /jira create Task:Update documentation
@@ -333,7 +350,38 @@ curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira
   -d "user_name=alan"
 ```
 
-#### 6. Test Issue Assignment
+#### 6. Test View Issue Details
+
+```bash
+# Test viewing issue details
+curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "token=your_webhook_token" \
+  -d "channel_id=fukxanjgjbnp7ng383at53k1sy" \
+  -d "channel_name=general" \
+  -d "text=view PROJ-123" \
+  -d "user_name=alan"
+
+# Test viewing bug issue
+curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "token=your_webhook_token" \
+  -d "channel_id=fukxanjgjbnp7ng383at53k1sy" \
+  -d "channel_name=general" \
+  -d "text=view BUG-456" \
+  -d "user_name=alan"
+
+# Test viewing story issue
+curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "token=your_webhook_token" \
+  -d "channel_id=fukxanjgjbnp7ng383at53k1sy" \
+  -d "channel_name=general" \
+  -d "text=view STORY-789" \
+  -d "user_name=alan"
+```
+
+#### 7. Test Issue Assignment
 
 ```bash
 curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira" \
@@ -345,7 +393,7 @@ curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira
   -d "user_name=alan"
 ```
 
-#### 7. Test Channel Binding
+#### 8. Test Channel Binding
 
 ```bash
 curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira" \
@@ -357,7 +405,7 @@ curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira
   -d "user_name=alan"
 ```
 
-#### 8. Test Status Check
+#### 9. Test Status Check
 
 ```bash
 curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira" \
@@ -369,7 +417,7 @@ curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira
   -d "user_name=alan"
 ```
 
-#### 9. Test Get Links
+#### 10. Test Get Links
 
 ```bash
 curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira" \
@@ -381,7 +429,7 @@ curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira
   -d "user_name=alan"
 ```
 
-#### 10. Test Board Links
+#### 11. Test Board Links
 
 ```bash
 curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira" \
@@ -393,7 +441,7 @@ curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira
   -d "user_name=alan"
 ```
 
-#### 11. Test Help Command
+#### 12. Test Help Command
 
 ```bash
 curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira" \
@@ -407,7 +455,7 @@ curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/jira
 
 ### Test Admin API Endpoints
 
-#### 12. Test Get Mappings (Admin Only)
+#### 13. Test Get Mappings (Admin Only)
 
 ```bash
 curl -X GET "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/mappings" \
@@ -415,7 +463,7 @@ curl -X GET "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/mappi
   -H "Authorization: Bearer your_auth_token"
 ```
 
-#### 13. Test Add Mapping (Admin Only)
+#### 14. Test Add Mapping (Admin Only)
 
 ```bash
 curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/mappings" \
@@ -428,7 +476,7 @@ curl -X POST "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/mapp
   }'
 ```
 
-#### 14. Test Delete Mapping (Admin Only)
+#### 15. Test Delete Mapping (Admin Only)
 
 ```bash
 curl -X DELETE "https://your-wordpress-site.com/wp-json/jira/mattermost/slash/mappings/1" \

@@ -482,6 +482,7 @@ class WP_MM_Slash_Jira_Admin {
                         <li><code>/jira bug Fix login issue</code> - Creates bug issue (shortcut)</li>
                         <li><code>/jira task Update documentation</code> - Creates task issue (shortcut)</li>
                         <li><code>/jira story Add new feature</code> - Creates story issue (shortcut)</li>
+                        <li><code>/jira view PROJ-123</code> - View detailed issue information</li>
                         <li><code>/jira create Bug:Fix login bug</code> - Creates bug issue with specific type</li>
                         <li><code>/jira create PROJ Story:Add new feature</code> - Creates story issue with specific project</li>
                         <li><code>/jira create Task:Update documentation</code> - Creates task issue with specific type</li>
@@ -503,6 +504,22 @@ class WP_MM_Slash_Jira_Admin {
                         <li><code>/jira task PROJECT-KEY Title</code> - Creates a task issue in specific project</li>
                         <li><code>/jira story Title</code> - Creates a story issue in mapped project</li>
                         <li><code>/jira story PROJECT-KEY Title</code> - Creates a story issue in specific project</li>
+                    </ul>
+                    
+                    <h3>View Issue Details</h3>
+                    <p>View comprehensive information about any Jira issue:</p>
+                    <ul>
+                        <li><code>/jira view PROJ-123</code> - View issue details including status, description, comments, and more</li>
+                    </ul>
+                    <p><strong>Information displayed:</strong></p>
+                    <ul>
+                        <li>Summary, Type, Status, Priority</li>
+                        <li>Assignee and Reporter</li>
+                        <li>Story Points (if available)</li>
+                        <li>Labels and Components</li>
+                        <li>Description</li>
+                        <li>Recent Comments (last 5)</li>
+                        <li>Direct link to Jira</li>
                     </ul>
                     
                     <h3>Available Issue Types</h3>
