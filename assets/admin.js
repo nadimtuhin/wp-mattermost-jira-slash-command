@@ -201,6 +201,110 @@ jQuery(document).ready(function($) {
         $('.nav-tab[href="#logs"]').click();
     }
     
+    // Export settings functionality
+    $('#export-settings').click(function() {
+        var button = $(this);
+        var originalText = button.text();
+        
+        button.prop('disabled', true).text('Exporting...');
+        
+        // Create a form to submit the export request
+        var form = $('<form>', {
+            'method': 'POST',
+            'action': wp_mm_slash_jira.ajax_url
+        });
+        
+        form.append($('<input>', {
+            'type': 'hidden',
+            'name': 'action',
+            'value': 'export_mm_jira_settings'
+        }));
+        
+        form.append($('<input>', {
+            'type': 'hidden',
+            'name': 'nonce',
+            'value': wp_mm_slash_jira.ajax_nonce
+        }));
+        
+        $('body').append(form);
+        form.submit();
+        form.remove();
+        
+        // Reset button after a short delay
+        setTimeout(function() {
+            button.prop('disabled', false).text(originalText);
+            $('#export-result').html('<p class="success">✅ Settings exported successfully! File download should start automatically.</p>');
+        }, 1000);
+    });
+    
+    // Import settings functionality
+    $('#import-settings').click(function() {
+        $('#import-file').click();
+    });
+    
+    $('#import-file').change(function() {
+        var file = this.files[0];
+        if (!file) {
+            return;
+        }
+        
+        // Validate file type
+        if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+            alert('Please select a valid JSON file.');
+            return;
+        }
+        
+        // Validate file size (max 1MB)
+        if (file.size > 1024 * 1024) {
+            alert('File size must be less than 1MB.');
+            return;
+        }
+        
+        if (!confirm('Importing settings will overwrite your current configuration. Are you sure you want to continue?')) {
+            return;
+        }
+        
+        var button = $('#import-settings');
+        var originalText = button.text();
+        
+        button.prop('disabled', true).text('Importing...');
+        
+        var formData = new FormData();
+        formData.append('action', 'import_mm_jira_settings');
+        formData.append('nonce', wp_mm_slash_jira.ajax_nonce);
+        formData.append('import_file', file);
+        
+        $.ajax({
+            url: wp_mm_slash_jira.ajax_url,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    $('#import-result').html('<p class="success">✅ ' + response.data + '</p>');
+                    // Reload page to show updated settings
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    $('#import-result').html('<p class="error">❌ ' + response.data + '</p>');
+                }
+            },
+            error: function(xhr, status, error) {
+                var errorMessage = 'Import failed: ' + error;
+                if (xhr.responseJSON && xhr.responseJSON.data) {
+                    errorMessage = xhr.responseJSON.data;
+                }
+                $('#import-result').html('<p class="error">❌ ' + errorMessage + '</p>');
+            },
+            complete: function() {
+                button.prop('disabled', false).text(originalText);
+                $('#import-file').val(''); // Clear file input
+            }
+        });
+    });
+    
     // Log modal functionality
     $('.view-log').click(function() {
         var logId = $(this).data('id');

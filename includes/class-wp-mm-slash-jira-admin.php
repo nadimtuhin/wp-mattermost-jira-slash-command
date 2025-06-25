@@ -10,6 +10,8 @@ class WP_MM_Slash_Jira_Admin {
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         add_action('wp_ajax_create_mm_jira_tables', array($this, 'ajax_create_tables'));
         add_action('wp_ajax_clear_mm_jira_logs', array($this, 'ajax_clear_logs'));
+        add_action('wp_ajax_export_mm_jira_settings', array($this, 'ajax_export_settings'));
+        add_action('wp_ajax_import_mm_jira_settings', array($this, 'ajax_import_settings'));
     }
     
     public function add_admin_menu() {
@@ -178,6 +180,36 @@ class WP_MM_Slash_Jira_Admin {
                     </table>
                     <?php submit_button(); ?>
                 </form>
+                
+                <div class="settings-import-export">
+                    <h3>Backup & Restore Settings</h3>
+                    <p>Export your current settings to a file or import settings from a previously exported file.</p>
+                    
+                    <div class="export-section">
+                        <h4>Export Settings</h4>
+                        <p>Download a backup of your current configuration including Jira settings and channel mappings.</p>
+                        <button type="button" id="export-settings" class="button button-secondary">📥 Export Settings</button>
+                        <div id="export-result"></div>
+                    </div>
+                    
+                    <div class="import-section">
+                        <h4>Import Settings</h4>
+                        <p>Restore settings from a previously exported backup file.</p>
+                        <input type="file" id="import-file" accept=".json" style="display: none;" />
+                        <button type="button" id="import-settings" class="button button-secondary">📤 Import Settings</button>
+                        <div id="import-result"></div>
+                    </div>
+                    
+                    <div class="import-export-notes">
+                        <h4>Important Notes:</h4>
+                        <ul>
+                            <li><strong>Export includes:</strong> Jira domain, API credentials, webhook token, logging settings, and all channel mappings</li>
+                            <li><strong>Security:</strong> API credentials are included in the export file - keep it secure!</li>
+                            <li><strong>Backup:</strong> Importing will overwrite existing settings - export first if you want to keep current settings</li>
+                            <li><strong>Format:</strong> Settings are exported as a JSON file</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
             
             <div id="mappings" class="tab-content" style="display: none;">
@@ -478,10 +510,10 @@ class WP_MM_Slash_Jira_Admin {
                         </ul>
                         
                         <div class="test-interface-link">
-                            <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../test-interface.php'); ?>" target="_blank" class="button button-primary">
-                                🚀 Open Test Interface
+                            <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../tests/test-interface.php'); ?>" target="_blank" class="button button-primary">
+                                🧪 Open Test Interface
                             </a>
-                            <p class="description">Opens in a new tab. You must be logged in as an administrator.</p>
+                            <p class="description">Interactive web-based testing interface. Opens in a new tab.</p>
                         </div>
                     </div>
                 </div>
@@ -531,7 +563,7 @@ class WP_MM_Slash_Jira_Admin {
                     <p>Check if your database tables are properly set up:</p>
                     
                     <div class="db-test-link">
-                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../test-db.php'); ?>" target="_blank" class="button button-secondary">
+                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../tests/test-db.php'); ?>" target="_blank" class="button button-secondary">
                             🔍 Run Database Tests
                         </a>
                         <p class="description">Comprehensive database and configuration tests. Opens in a new tab.</p>
@@ -543,7 +575,7 @@ class WP_MM_Slash_Jira_Admin {
                     <p>Verify your Jira domain format is correct:</p>
                     
                     <div class="domain-test-link">
-                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../test-domain.php'); ?>" target="_blank" class="button button-secondary">
+                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../tests/test-domain.php'); ?>" target="_blank" class="button button-secondary">
                             🌐 Test Domain Format
                         </a>
                         <p class="description">Check if your Jira domain is in the correct format. Opens in a new tab.</p>
@@ -555,7 +587,7 @@ class WP_MM_Slash_Jira_Admin {
                     <p>Debug issues with log details loading:</p>
                     
                     <div class="logs-test-link">
-                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../test-logs.php'); ?>" target="_blank" class="button button-secondary">
+                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../tests/test-logs.php'); ?>" target="_blank" class="button button-secondary">
                             📝 Test Log Details
                         </a>
                         <p class="description">Debug log details endpoint and permissions. Opens in a new tab.</p>
@@ -567,7 +599,7 @@ class WP_MM_Slash_Jira_Admin {
                     <p>Debug nonce generation and verification issues:</p>
                     
                     <div class="nonce-test-link">
-                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../test-nonce.php'); ?>" target="_blank" class="button button-secondary">
+                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../tests/test-nonce.php'); ?>" target="_blank" class="button button-secondary">
                             🔐 Test Nonce Functionality
                         </a>
                         <p class="description">Test nonce generation, verification, and API authentication. Opens in a new tab.</p>
@@ -579,7 +611,7 @@ class WP_MM_Slash_Jira_Admin {
                     <p>Test REST API endpoints and authentication:</p>
                     
                     <div class="rest-api-test-link">
-                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../test-rest-api.php'); ?>" target="_blank" class="button button-secondary">
+                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../tests/test-rest-api.php'); ?>" target="_blank" class="button button-secondary">
                             🔌 Test REST API Endpoints
                         </a>
                         <p class="description">Test all REST API endpoints and authentication. Opens in a new tab.</p>
@@ -591,7 +623,7 @@ class WP_MM_Slash_Jira_Admin {
                     <p>Test user permissions and authentication:</p>
                     
                     <div class="permissions-test-link">
-                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../test-permissions.php'); ?>" target="_blank" class="button button-secondary">
+                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../tests/test-permissions.php'); ?>" target="_blank" class="button button-secondary">
                             👤 Test User Permissions
                         </a>
                         <p class="description">Test user authentication, roles, and capabilities. Opens in a new tab.</p>
@@ -603,7 +635,7 @@ class WP_MM_Slash_Jira_Admin {
                     <p>Test authentication for API calls from admin interface:</p>
                     
                     <div class="auth-test-link">
-                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../test-authentication.php'); ?>" target="_blank" class="button button-secondary">
+                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../tests/test-authentication.php'); ?>" target="_blank" class="button button-secondary">
                             🔐 Test Authentication
                         </a>
                         <p class="description">Test nonce generation, REST API authentication, and AJAX calls. Opens in a new tab.</p>
@@ -615,7 +647,7 @@ class WP_MM_Slash_Jira_Admin {
                     <p>Test the new curl command functionality in log details:</p>
                     
                     <div class="curl-test-link">
-                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../test-curl-commands.php'); ?>" target="_blank" class="button button-secondary">
+                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../tests/test-curl-commands.php'); ?>" target="_blank" class="button button-secondary">
                             🔧 Test Curl Commands
                         </a>
                         <p class="description">Demonstrate curl command generation and copy functionality. Opens in a new tab.</p>
@@ -730,14 +762,179 @@ class WP_MM_Slash_Jira_Admin {
         }
         
         if ($result === false) {
-            wp_send_json_error(array(
-                'message' => 'Failed to clear logs. Database error: ' . $wpdb->last_error
-            ));
+            wp_send_json_error('Database error: ' . $wpdb->last_error);
         } else {
-            wp_send_json_success(array(
-                'message' => $message,
-                'cleared_count' => $result
-            ));
+            wp_send_json_success($message);
+        }
+    }
+    
+    /**
+     * AJAX handler for exporting settings
+     */
+    public function ajax_export_settings() {
+        // Verify nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'wp_mm_slash_jira_nonce')) {
+            wp_die('Security check failed');
+        }
+        
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_die('Insufficient permissions');
+        }
+        
+        // Collect all settings
+        $settings = array(
+            'version' => '1.0',
+            'export_date' => current_time('mysql'),
+            'wordpress_site' => get_site_url(),
+            'plugin_version' => WP_MM_SLASH_JIRA_VERSION,
+            'settings' => array(
+                'jira_domain' => get_option('wp_mm_slash_jira_jira_domain'),
+                'api_user_email' => get_option('wp_mm_slash_jira_api_user_email'),
+                'api_key' => get_option('wp_mm_slash_jira_api_key'),
+                'webhook_token' => get_option('wp_mm_slash_jira_webhook_token'),
+                'enable_logging' => get_option('wp_mm_slash_jira_enable_logging')
+            )
+        );
+        
+        // Get channel mappings
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'mm_jira_mappings';
+        $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY created_at ASC", ARRAY_A);
+        $settings['mappings'] = $mappings;
+        
+        // Generate filename
+        $filename = 'mm-jira-settings-' . date('Y-m-d-H-i-s') . '.json';
+        
+        // Set headers for file download
+        header('Content-Type: application/json');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Length: ' . strlen(json_encode($settings)));
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: Sat, 26 Jul 1997 05:00:00 GMT');
+        
+        // Output the JSON
+        echo json_encode($settings, JSON_PRETTY_PRINT);
+        exit;
+    }
+    
+    /**
+     * AJAX handler for importing settings
+     */
+    public function ajax_import_settings() {
+        // Verify nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'wp_mm_slash_jira_nonce')) {
+            wp_send_json_error('Security check failed');
+        }
+        
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('Insufficient permissions');
+        }
+        
+        // Check if file was uploaded
+        if (!isset($_FILES['import_file']) || $_FILES['import_file']['error'] !== UPLOAD_ERR_OK) {
+            wp_send_json_error('No file uploaded or upload error occurred');
+        }
+        
+        $file = $_FILES['import_file'];
+        
+        // Validate file type
+        if ($file['type'] !== 'application/json' && pathinfo($file['name'], PATHINFO_EXTENSION) !== 'json') {
+            wp_send_json_error('Invalid file type. Please upload a JSON file.');
+        }
+        
+        // Read and decode the file
+        $json_content = file_get_contents($file['tmp_name']);
+        if (!$json_content) {
+            wp_send_json_error('Could not read the uploaded file');
+        }
+        
+        $import_data = json_decode($json_content, true);
+        if (!$import_data || !is_array($import_data)) {
+            wp_send_json_error('Invalid JSON format in the uploaded file');
+        }
+        
+        // Validate required fields
+        if (!isset($import_data['version']) || !isset($import_data['settings'])) {
+            wp_send_json_error('Invalid import file format. Missing required fields.');
+        }
+        
+        // Import settings
+        $imported_count = 0;
+        $errors = array();
+        
+        try {
+            // Import WordPress options
+            if (isset($import_data['settings'])) {
+                $settings = $import_data['settings'];
+                
+                if (isset($settings['jira_domain'])) {
+                    update_option('wp_mm_slash_jira_jira_domain', sanitize_text_field($settings['jira_domain']));
+                    $imported_count++;
+                }
+                
+                if (isset($settings['api_user_email'])) {
+                    update_option('wp_mm_slash_jira_api_user_email', sanitize_email($settings['api_user_email']));
+                    $imported_count++;
+                }
+                
+                if (isset($settings['api_key'])) {
+                    update_option('wp_mm_slash_jira_api_key', sanitize_text_field($settings['api_key']));
+                    $imported_count++;
+                }
+                
+                if (isset($settings['webhook_token'])) {
+                    update_option('wp_mm_slash_jira_webhook_token', sanitize_text_field($settings['webhook_token']));
+                    $imported_count++;
+                }
+                
+                if (isset($settings['enable_logging'])) {
+                    update_option('wp_mm_slash_jira_enable_logging', sanitize_text_field($settings['enable_logging']));
+                    $imported_count++;
+                }
+            }
+            
+            // Import channel mappings
+            if (isset($import_data['mappings']) && is_array($import_data['mappings'])) {
+                global $wpdb;
+                $table_name = $wpdb->prefix . 'mm_jira_mappings';
+                
+                // Clear existing mappings
+                $wpdb->query("DELETE FROM $table_name");
+                
+                // Import new mappings
+                foreach ($import_data['mappings'] as $mapping) {
+                    if (isset($mapping['channel_id']) && isset($mapping['channel_name']) && isset($mapping['jira_project_key'])) {
+                        $result = $wpdb->insert(
+                            $table_name,
+                            array(
+                                'channel_id' => sanitize_text_field($mapping['channel_id']),
+                                'channel_name' => sanitize_text_field($mapping['channel_name']),
+                                'jira_project_key' => sanitize_text_field($mapping['jira_project_key']),
+                                'created_at' => isset($mapping['created_at']) ? $mapping['created_at'] : current_time('mysql')
+                            ),
+                            array('%s', '%s', '%s', '%s')
+                        );
+                        
+                        if ($result !== false) {
+                            $imported_count++;
+                        } else {
+                            $errors[] = "Failed to import mapping for channel: " . $mapping['channel_name'];
+                        }
+                    }
+                }
+            }
+            
+            $message = "Settings imported successfully! Imported $imported_count items.";
+            if (!empty($errors)) {
+                $message .= " Errors: " . implode(', ', $errors);
+            }
+            
+            wp_send_json_success($message);
+            
+        } catch (Exception $e) {
+            wp_send_json_error('Import failed: ' . $e->getMessage());
         }
     }
 } 

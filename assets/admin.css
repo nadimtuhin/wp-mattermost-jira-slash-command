@@ -553,4 +553,100 @@
         width: 95%;
         margin: 10% auto;
     }
+}
+
+/* Import/Export Settings Styles */
+.settings-import-export {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.settings-import-export h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    border-bottom: 2px solid #0073aa;
+    padding-bottom: 10px;
+}
+
+.settings-import-export h4 {
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: #555;
+}
+
+.export-section,
+.import-section {
+    background: #fff;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.export-section p,
+.import-section p {
+    margin-bottom: 15px;
+    color: #666;
+}
+
+#import-file {
+    margin-bottom: 10px;
+}
+
+#import-result,
+#export-result {
+    margin-top: 10px;
+}
+
+#import-result p,
+#export-result p {
+    padding: 10px;
+    border-radius: 3px;
+    margin: 0;
+}
+
+#import-result p.success,
+#export-result p.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+#import-result p.error,
+#export-result p.error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.import-export-notes {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 3px;
+    padding: 15px;
+    margin-top: 20px;
+}
+
+.import-export-notes h4 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #856404;
+}
+
+.import-export-notes ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.import-export-notes li {
+    margin: 5px 0;
+    color: #856404;
+}
+
+.import-export-notes strong {
+    color: #533f03;
 } 
