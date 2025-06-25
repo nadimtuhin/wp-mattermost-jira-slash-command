@@ -89,6 +89,15 @@ class WP_MM_Slash_Jira_API {
                 case 'create':
                     $response = $this->create_jira_issue($channel_id, $channel_name, $text, $user_name);
                     break;
+                case 'bug':
+                    $response = $this->create_jira_issue_with_type($channel_id, $channel_name, $text, $user_name, 'Bug');
+                    break;
+                case 'task':
+                    $response = $this->create_jira_issue_with_type($channel_id, $channel_name, $text, $user_name, 'Task');
+                    break;
+                case 'story':
+                    $response = $this->create_jira_issue_with_type($channel_id, $channel_name, $text, $user_name, 'Story');
+                    break;
                 case 'assign':
                     $response = $this->assign_jira_issue($channel_id, $channel_name, $text, $user_name);
                     break;
@@ -148,6 +157,7 @@ class WP_MM_Slash_Jira_API {
         // Get project key from channel mapping or from command
         $parts = explode(' ', trim($text));
         $project_key = null;
+        $issue_type = null;
         
         // Check if project key is provided in command
         if (count($parts) >= 2) {
@@ -185,20 +195,48 @@ class WP_MM_Slash_Jira_API {
             $title = implode(' ', array_slice($parts, 1));
         }
         
+        // Parse task type from command if specified
+        // Format: /jira create [PROJECT-KEY] [TYPE:]Title
+        // Examples: /jira create Bug:Fix login issue
+        //          /jira create PROJ Story:Add new feature
+        //          /jira create Task:Update documentation
+        if (!empty($title)) {
+            $title_parts = explode(':', $title, 2);
+            if (count($title_parts) === 2) {
+                $potential_type = trim($title_parts[0]);
+                $actual_title = trim($title_parts[1]);
+                
+                // Validate if the first part looks like a valid issue type
+                $valid_types = array('Task', 'Bug', 'Story', 'Epic', 'Subtask', 'Improvement', 'New Feature');
+                if (in_array($potential_type, $valid_types) && !empty($actual_title)) {
+                    $issue_type = $potential_type;
+                    $title = $actual_title;
+                }
+            }
+        }
+        
         if (empty($title)) {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Please provide a title for the issue. Usage: `/jira create [PROJECT-KEY] Title` or `/jira create [PROJECT-KEY-ISSUE-NUMBER] Title` or `/jira create Title`"
+                'text' => "❌ Please provide a title for the issue. Usage: `/jira create [PROJECT-KEY] Title` or `/jira create [PROJECT-KEY] [TYPE:]Title` or `/jira create Title`\n\n**Examples:**\n• `/jira create Fix login bug`\n• `/jira create Bug:Fix login bug`\n• `/jira create PROJ Story:Add new feature`\n• `/jira create Task:Update documentation`"
             );
         }
         
         // Create the issue in Jira
-        $result = $this->create_issue_in_jira($project_key, $title, $user_name, $channel_name);
+        $result = $this->create_issue_in_jira($project_key, $title, $user_name, $channel_name, $issue_type);
         
         if ($result['success']) {
+            $response_text = "✅ Issue created successfully!\n\n**Issue:** {$result['issue_key']}\n**Title:** {$title}\n**Created by:** @{$user_name}\n**Project:** {$project_key}";
+            
+            if (!empty($issue_type)) {
+                $response_text .= "\n**Type:** {$issue_type}";
+            }
+            
+            $response_text .= "\n\n[View in Jira]({$result['url']})";
+            
             return array(
                 'response_type' => 'in_channel',
-                'text' => "✅ Issue created successfully!\n\n**Issue:** {$result['issue_key']}\n**Title:** {$title}\n**Created by:** @{$user_name}\n**Project:** {$project_key}\n\n[View in Jira]({$result['url']})"
+                'text' => $response_text
             );
         } else {
             return array(
@@ -206,6 +244,28 @@ class WP_MM_Slash_Jira_API {
                 'text' => "❌ Failed to create issue: {$result['error']}"
             );
         }
+    }
+    
+    /**
+     * Create a Jira issue with a specific type
+     */
+    private function create_jira_issue_with_type($channel_id, $channel_name, $text, $user_name, $type) {
+        // Remove the command part and reconstruct the text with the type prefix
+        $parts = explode(' ', trim($text));
+        $title_parts = array_slice($parts, 1); // Remove the command (bug/task/story)
+        
+        if (empty($title_parts)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Please provide a title for the issue. Usage: `/jira {$type} Title` or `/jira {$type} PROJECT-KEY Title`\n\n**Examples:**\n• `/jira {$type} Fix login issue`\n• `/jira {$type} PROJ Add new feature`"
+            );
+        }
+        
+        // Reconstruct the text with the type prefix
+        $reconstructed_text = "create " . $type . ":" . implode(' ', $title_parts);
+        
+        // Use the existing create_jira_issue method
+        return $this->create_jira_issue($channel_id, $channel_name, $reconstructed_text, $user_name);
     }
     
     /**
@@ -743,7 +803,7 @@ class WP_MM_Slash_Jira_API {
     /**
      * Create issue in Jira via API
      */
-    private function create_issue_in_jira($project_key, $title, $user_name, $channel_name) {
+    private function create_issue_in_jira($project_key, $title, $user_name, $channel_name, $issue_type = null) {
         $jira_domain = get_option('wp_mm_slash_jira_jira_domain');
         $api_key = get_option('wp_mm_slash_jira_api_key');
         
@@ -759,11 +819,13 @@ class WP_MM_Slash_Jira_API {
         }
         
         // Determine issue type based on channel name or default to Task
-        $issue_type = 'Task';
-        if (stripos($channel_name, 'bug') !== false) {
-            $issue_type = 'Bug';
-        } elseif (stripos($channel_name, 'feature') !== false || stripos($channel_name, 'enhancement') !== false) {
-            $issue_type = 'Story';
+        if ($issue_type === null) {
+            $issue_type = 'Task';
+            if (stripos($channel_name, 'bug') !== false) {
+                $issue_type = 'Bug';
+            } elseif (stripos($channel_name, 'feature') !== false || stripos($channel_name, 'enhancement') !== false) {
+                $issue_type = 'Story';
+            }
         }
         
         $data = array(
@@ -779,7 +841,7 @@ class WP_MM_Slash_Jira_API {
             )
         );
         
-        $url = "https://{$jira_domain}/ ";
+        $url = "https://{$jira_domain}/rest/api/2/issue";
         $auth_header = $this->get_auth_header();
         if (!$auth_header) {
             return array('success' => false, 'error' => 'Jira API credentials not configured');
@@ -886,7 +948,16 @@ class WP_MM_Slash_Jira_API {
                      "**Create an issue:**\n" .
                      "• `/jira create Title` - Creates issue in mapped project\n" .
                      "• `/jira create PROJECT-KEY Title` - Creates issue with specific project key\n" .
-                     "• `/jira create PROJ-123 Title` - Creates issue with specific project key (legacy format)\n\n" .
+                     "• `/jira create PROJ-123 Title` - Creates issue with specific project key (legacy format)\n" .
+                     "• `/jira create TYPE:Title` - Creates issue with specific type (Task, Bug, Story, Epic, etc.)\n" .
+                     "• `/jira create PROJECT-KEY TYPE:Title` - Creates issue with specific project and type\n\n" .
+                     "**Quick issue creation (shortcuts):**\n" .
+                     "• `/jira bug Title` - Creates a bug issue\n" .
+                     "• `/jira bug PROJECT-KEY Title` - Creates a bug issue in specific project\n" .
+                     "• `/jira task Title` - Creates a task issue\n" .
+                     "• `/jira task PROJECT-KEY Title` - Creates a task issue in specific project\n" .
+                     "• `/jira story Title` - Creates a story issue\n" .
+                     "• `/jira story PROJECT-KEY Title` - Creates a story issue in specific project\n\n" .
                      "**Assign an issue:**\n" .
                      "• `/jira assign PROJ-123 user@example.com` - Assigns issue to user by email\n\n" .
                      "**Bind channel to project:**\n" .
@@ -898,6 +969,12 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira board` - Get links to Jira boards and backlogs\n\n" .
                      "**Examples:**\n" .
                      "• `/jira create Fix login bug`\n" .
+                     "• `/jira bug Fix login issue`\n" .
+                     "• `/jira task Update documentation`\n" .
+                     "• `/jira story Add new feature`\n" .
+                     "• `/jira create Bug:Fix login bug`\n" .
+                     "• `/jira create PROJ Story:Add new feature`\n" .
+                     "• `/jira create Task:Update documentation`\n" .
                      "• `/jira create TPFIJB Add new feature`\n" .
                      "• `/jira create PROJ-456 Add new feature`\n" .
                      "• `/jira assign PROJ-123 developer@company.com`\n" .
@@ -905,7 +982,9 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira status` - Check current binding status\n" .
                      "• `/jira link` - Get task creation links\n" .
                      "• `/jira board` - Get board links\n\n" .
-                     "**Note:** If no project key is specified, the issue will be created in the project mapped to this channel."
+                     "**Available Issue Types:**\n" .
+                     "• Task, Bug, Story, Epic, Subtask, Improvement, New Feature\n\n" .
+                     "**Note:** If no project key is specified, the issue will be created in the project mapped to this channel. If no issue type is specified, it will be determined automatically based on the channel name or default to 'Task'."
         );
     }
     

@@ -479,6 +479,12 @@ class WP_MM_Slash_Jira_Admin {
                     <h3>Usage Examples</h3>
                     <ul>
                         <li><code>/jira create Fix login bug</code> - Creates issue in mapped project</li>
+                        <li><code>/jira bug Fix login issue</code> - Creates bug issue (shortcut)</li>
+                        <li><code>/jira task Update documentation</code> - Creates task issue (shortcut)</li>
+                        <li><code>/jira story Add new feature</code> - Creates story issue (shortcut)</li>
+                        <li><code>/jira create Bug:Fix login bug</code> - Creates bug issue with specific type</li>
+                        <li><code>/jira create PROJ Story:Add new feature</code> - Creates story issue with specific project</li>
+                        <li><code>/jira create Task:Update documentation</code> - Creates task issue with specific type</li>
                         <li><code>/jira create PROJ-123 Add new feature</code> - Creates issue with specific project</li>
                         <li><code>/jira assign PROJ-123 developer@company.com</code> - Assigns issue to user by email</li>
                         <li><code>/jira bind PROJ</code> - Binds current channel to PROJ project</li>
@@ -486,6 +492,29 @@ class WP_MM_Slash_Jira_Admin {
                         <li><code>/jira link</code> - Get links for creating new tasks</li>
                         <li><code>/jira board</code> - Get links to Jira boards and backlogs</li>
                         <li><code>/jira help</code> - Shows help message</li>
+                    </ul>
+                    
+                    <h3>Quick Commands (Shortcuts)</h3>
+                    <p>Use these shortcuts for faster issue creation:</p>
+                    <ul>
+                        <li><code>/jira bug Title</code> - Creates a bug issue in mapped project</li>
+                        <li><code>/jira bug PROJECT-KEY Title</code> - Creates a bug issue in specific project</li>
+                        <li><code>/jira task Title</code> - Creates a task issue in mapped project</li>
+                        <li><code>/jira task PROJECT-KEY Title</code> - Creates a task issue in specific project</li>
+                        <li><code>/jira story Title</code> - Creates a story issue in mapped project</li>
+                        <li><code>/jira story PROJECT-KEY Title</code> - Creates a story issue in specific project</li>
+                    </ul>
+                    
+                    <h3>Available Issue Types</h3>
+                    <p>You can specify the issue type using the format <code>TYPE:Title</code>:</p>
+                    <ul>
+                        <li><strong>Task</strong> - General tasks and work items</li>
+                        <li><strong>Bug</strong> - Software defects and issues</li>
+                        <li><strong>Story</strong> - User stories and features</li>
+                        <li><strong>Epic</strong> - Large initiatives and projects</li>
+                        <li><strong>Subtask</strong> - Smaller tasks within larger issues</li>
+                        <li><strong>Improvement</strong> - Enhancements and improvements</li>
+                        <li><strong>New Feature</strong> - New functionality and features</li>
                     </ul>
                 </div>
             </div>
@@ -651,6 +680,18 @@ class WP_MM_Slash_Jira_Admin {
                             🔧 Test Curl Commands
                         </a>
                         <p class="description">Demonstrate curl command generation and copy functionality. Opens in a new tab.</p>
+                    </div>
+                </div>
+                
+                <div class="testing-section">
+                    <h3>🎯 Task Type Functionality Testing</h3>
+                    <p>Test the new task type feature in slash commands:</p>
+                    
+                    <div class="task-type-test-link">
+                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../tests/test-task-type.php'); ?>" target="_blank" class="button button-secondary">
+                            🎯 Test Task Type Feature
+                        </a>
+                        <p class="description">Test the new task type functionality with various issue types. Opens in a new tab.</p>
                     </div>
                 </div>
                 
