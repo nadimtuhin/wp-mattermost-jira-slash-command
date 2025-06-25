@@ -15,7 +15,7 @@ if (!function_exists('get_option')) {
 
 // Test configuration
 $test_email_domain = 'company.com';
-$test_username = 'developer';
+$test_username = 'omartuhin';
 $test_email = $test_username . '@' . $test_email_domain;
 
 echo "<h1>Testing @username Functionality</h1>\n";
@@ -46,21 +46,21 @@ if (!empty($current_domain)) {
 // Test 3: Test command parsing
 echo "<h2>Test 3: Command Parsing Examples</h2>\n";
 echo "<h3>Assign Command Examples:</h3>\n";
-echo "• <code>/jira assign PROJ-123 @developer</code> - Assign by username\n";
-echo "• <code>/jira assign PROJ-123 developer@company.com</code> - Assign by email\n";
-echo "• <code>/jira assign PROJ-123 @john.doe</code> - Assign by username\n\n";
+echo "• <code>/jira assign PROJ-123 @omartuhin</code> - Assign by username\n";
+echo "• <code>/jira assign PROJ-123 omartuhin@company.com</code> - Assign by email\n";
+echo "• <code>/jira assign PROJ-123 @rahmantanvir</code> - Assign by username\n\n";
 
 echo "<h3>Find Command Examples:</h3>\n";
-echo "• <code>/jira find @developer</code> - Find by username\n";
-echo "• <code>/jira find developer@company.com</code> - Find by email\n";
-echo "• <code>/jira find @john.doe</code> - Find by username\n\n";
+echo "• <code>/jira find @omartuhin</code> - Find by username\n";
+echo "• <code>/jira find omartuhin@company.com</code> - Find by email\n";
+echo "• <code>/jira find @rahmantanvir</code> - Find by username\n\n";
 
 // Test 4: Input validation examples
 echo "<h2>Test 4: Input Validation</h2>\n";
 echo "<h3>Valid Inputs:</h3>\n";
-echo "• <code>@developer</code> - Valid username format\n";
-echo "• <code>developer@company.com</code> - Valid email format\n";
-echo "• <code>@john.doe</code> - Valid username with dots\n\n";
+echo "• <code>@omartuhin</code> - Valid username format\n";
+echo "• <code>omartuhin@company.com</code> - Valid email format\n";
+echo "• <code>@rahmantanvir</code> - Valid username with dots\n\n";
 
 echo "<h3>Invalid Inputs:</h3>\n";
 echo "• <code>developer</code> - Missing @ or email format\n";
@@ -97,9 +97,9 @@ if (!empty($current_domain)) {
 
 echo "\n<h2>Usage Instructions</h2>\n";
 echo "<h3>For Users:</h3>\n";
-echo "1. Assign issues: <code>/jira assign PROJ-123 @developer</code>\n";
-echo "2. Find users: <code>/jira find @developer</code>\n";
-echo "3. Still works with full emails: <code>/jira assign PROJ-123 developer@company.com</code>\n\n";
+echo "1. Assign issues: <code>/jira assign PROJ-123 @omartuhin</code>\n";
+echo "2. Find users: <code>/jira find @omartuhin</code>\n";
+echo "3. Still works with full emails: <code>/jira assign PROJ-123 omartuhin@company.com</code>\n\n";
 
 echo "<h3>For Administrators:</h3>\n";
 echo "1. Go to WordPress Admin → Jira Integration → Settings\n";
@@ -108,7 +108,7 @@ echo "3. Save settings\n";
 echo "4. Users can now use @username format\n\n";
 
 echo "<h3>Benefits:</h3>\n";
-echo "• Faster typing: <code>@developer</code> vs <code>developer@company.com</code>\n";
+echo "• Faster typing: <code>@omartuhin</code> vs <code>omartuhin@company.com</code>\n";
 echo "• Less error-prone: No need to remember full email addresses\n";
 echo "• Consistent with Mattermost @mentions\n";
 echo "• Backward compatible: Full emails still work\n";

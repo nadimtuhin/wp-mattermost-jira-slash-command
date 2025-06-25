@@ -190,6 +190,12 @@ class WP_MM_Slash_Jira_API {
                 case 'story':
                     $response = $this->create_jira_issue_with_type($channel_id, $channel_name, $text, $user_name, 'Story');
                     break;
+                case 'subtask':
+                    $response = $this->create_subtask($channel_id, $channel_name, $text, $user_name);
+                    break;
+                case 'sub':
+                    $response = $this->create_subtask($channel_id, $channel_name, $text, $user_name);
+                    break;
                 case 'view':
                     $response = $this->view_jira_issue($channel_id, $channel_name, $text, $user_name);
                     break;
@@ -344,7 +350,7 @@ class WP_MM_Slash_Jira_API {
         if (empty($title)) {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Please provide a title for the issue. Usage: `/jira create [PROJECT-KEY] Title [@username|email]` or `/jira create [PROJECT-KEY] [TYPE:]Title [@username|email]` or `/jira create Title [@username|email]`\n\n**Examples:**\n• `/jira create Fix login bug @developer`\n• `/jira create Bug:Fix login bug @developer`\n• `/jira create PROJ Story:Add new feature @john.doe`\n• `/jira create Task:Update documentation developer@company.com`"
+                'text' => "❌ Please provide a title for the issue. Usage: `/jira create [PROJECT-KEY] Title [@username|email]` or `/jira create [PROJECT-KEY] [TYPE:]Title [@username|email]` or `/jira create Title [@username|email]`\n\n**Examples:**\n• `/jira create Fix login bug @developer`\n• `/jira create Bug:Fix login bug @omartuhin`\n• `/jira create PROJ Story:Add new feature @rahmantanvir`\n• `/jira create Task:Update documentation developer@company.com`"
             );
         }
         
@@ -392,7 +398,7 @@ class WP_MM_Slash_Jira_API {
         if (empty($title_parts)) {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Please provide a title for the issue. Usage: `/jira {$type} Title` or `/jira {$type} PROJECT-KEY Title`\n\n**Examples:**\n• `/jira {$type} Fix login issue`\n• `/jira {$type} PROJ Add new feature`"
+                'text' => "❌ Please provide a title for the issue. Usage: `/jira {$type} Title` or `/jira {$type} PROJECT-KEY Title`\n\n**Examples:**\n• `/jira {$type} Fix login issue`\n• `/jira {$type} PROJ Add new feature @developer`"
             );
         }
         
@@ -401,6 +407,75 @@ class WP_MM_Slash_Jira_API {
         
         // Use the existing create_jira_issue method
         return $this->create_jira_issue($channel_id, $channel_name, $reconstructed_text, $user_name);
+    }
+    
+    /**
+     * Create a subtask within an existing task
+     */
+    private function create_subtask($channel_id, $channel_name, $text, $user_name) {
+        $parts = explode(' ', trim($text));
+        
+        // Check if we have enough parameters: subtask PARENT-ISSUE-KEY Title
+        if (count($parts) < 3) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Please provide a parent issue key and title. Usage: `/jira subtask PROJ-123 Title` or `/jira subtask PROJ-123 Title @username`\n\n**Examples:**\n• `/jira subtask PROJ-123 Fix login bug`\n• `/jira subtask PROJ-123 Update documentation @omartuhin`\n• `/jira subtask STORY-456 Add unit tests @rahmantanvir`"
+            );
+        }
+        
+        $parent_issue_key = $parts[1];
+        $title = implode(' ', array_slice($parts, 2));
+        
+        // Validate parent issue key format
+        if (!preg_match('/^[A-Z]+-\d+$/', $parent_issue_key)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Invalid parent issue key format. Please use format: PROJECT-123"
+            );
+        }
+        
+        // Check for assignee at the end of the title
+        $assignee = null;
+        $title_words = explode(' ', $title);
+        $last_word = end($title_words);
+        
+        // Check if last word is an assignee (@username or email)
+        if (strpos($last_word, '@') === 0 || filter_var($last_word, FILTER_VALIDATE_EMAIL)) {
+            $assignee = $last_word;
+            // Remove assignee from title
+            array_pop($title_words);
+            $title = implode(' ', $title_words);
+        }
+        
+        if (empty($title)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Please provide a title for the subtask. Usage: `/jira subtask PROJ-123 Title` or `/jira subtask PROJ-123 Title @username`\n\n**Examples:**\n• `/jira subtask PROJ-123 Fix login bug`\n• `/jira subtask PROJ-123 Update documentation @omartuhin`"
+            );
+        }
+        
+        // Create the subtask in Jira
+        $result = $this->create_subtask_in_jira($parent_issue_key, $title, $user_name, $channel_name, $assignee);
+        
+        if ($result['success']) {
+            $response_text = "✅ Subtask created successfully!\n\n**Subtask:** {$result['issue_key']}\n**Title:** {$title}\n**Parent:** {$parent_issue_key}\n**Created by:** @{$user_name}";
+            
+            if (!empty($assignee)) {
+                $response_text .= "\n**Assigned to:** {$assignee}";
+            }
+            
+            $response_text .= "\n\n[View in Jira]({$result['url']})";
+            
+            return array(
+                'response_type' => 'in_channel',
+                'text' => $response_text
+            );
+        } else {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Failed to create subtask: {$result['error']}"
+            );
+        }
     }
     
     /**
@@ -507,7 +582,7 @@ class WP_MM_Slash_Jira_API {
         if (count($parts) < 3) {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Please provide an issue key and user. Usage: `/jira assign PROJ-123 user@example.com` or `/jira assign PROJ-123 @username`\n\n**Examples:**\n• `/jira assign PROJ-123 developer@company.com`\n• `/jira assign PROJ-123 @john.doe`\n• `/jira assign PROJ-123 @developer`"
+                'text' => "❌ Please provide an issue key and user. Usage: `/jira assign PROJ-123 user@example.com` or `/jira assign PROJ-123 @username`\n\n**Examples:**\n• `/jira assign PROJ-123 developer@company.com`\n• `/jira assign PROJ-123 @omartuhin`\n• `/jira assign PROJ-123 @rahmantanvir`"
             );
         }
         
@@ -543,7 +618,7 @@ class WP_MM_Slash_Jira_API {
         } else {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Invalid user format. Please use:\n• Full email: `user@example.com`\n• Username: `@username` (requires email domain configuration)\n\n**Examples:**\n• `/jira assign PROJ-123 developer@company.com`\n• `/jira assign PROJ-123 @john.doe`"
+                'text' => "❌ Invalid user format. Please use:\n• Full email: `user@example.com`\n• Username: `@username` (requires email domain configuration)\n\n**Examples:**\n• `/jira assign PROJ-123 developer@company.com`\n• `/jira assign PROJ-123 @omartuhin`"
             );
         }
         
@@ -965,9 +1040,9 @@ class WP_MM_Slash_Jira_API {
                        "• `/jira bind NEWPROJ` - Change to different project\n" .
                        "• `/jira unbind` - Remove current project binding\n" .
                        "• `/jira assign PROJ-123 user@company.com` - Assign issue\n" .
-                       "• `/jira assign PROJ-123 @username` - Assign issue (using @username)\n" .
+                       "• `/jira assign PROJ-123 @omartuhin` - Assign issue (using @username)\n" .
                        "• `/jira find user@company.com` - Find Jira user\n" .
-                       "• `/jira find @username` - Find Jira user (using @username)\n" .
+                       "• `/jira find @rahmantanvir` - Find Jira user (using @username)\n" .
                        "• `/jira help` - Show all commands\n\n" .
                        "**Quick examples:**\n" .
                        "• `/jira create Fix login bug`\n" .
@@ -1291,7 +1366,7 @@ class WP_MM_Slash_Jira_API {
         if (count($parts) < 2) {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Please provide an email address or username to search for. Usage: `/jira find user@example.com` or `/jira find @username`\n\n**Examples:**\n• `/jira find developer@company.com`\n• `/jira find @john.doe`\n• `/jira find @developer`"
+                'text' => "❌ Please provide an email address or username to search for. Usage: `/jira find user@example.com` or `/jira find @username`\n\n**Examples:**\n• `/jira find developer@company.com`\n• `/jira find @omartuhin`\n• `/jira find @rahmantanvir`"
             );
         }
         
@@ -1318,7 +1393,7 @@ class WP_MM_Slash_Jira_API {
         } else {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Invalid user format. Please use:\n• Full email: `user@example.com`\n• Username: `@username` (requires email domain configuration)\n\n**Examples:**\n• `/jira find developer@company.com`\n• `/jira find @john.doe`"
+                'text' => "❌ Invalid user format. Please use:\n• Full email: `user@example.com`\n• Username: `@username` (requires email domain configuration)\n\n**Examples:**\n• `/jira find developer@company.com`\n• `/jira find @omartuhin`"
             );
         }
         
@@ -1410,6 +1485,11 @@ class WP_MM_Slash_Jira_API {
             } elseif (isset($user['displayName']) && stripos($user['displayName'], $email) !== false) {
                 $partial_matches[] = $user;
             }
+        }
+
+        // no match found, take the first user
+        if (empty($exact_matches) && empty($partial_matches) && !empty($users) && count($users) === 1) {
+            $exact_matches[] = $users[0];
         }
         
         $user_text = "🔍 **User Search Results for: {$user_input}**\n\n";
@@ -1842,17 +1922,21 @@ class WP_MM_Slash_Jira_API {
                      "**With assignee:** `/jira create Fix login bug @developer`\n\n" .
                      "**⚡ Quick shortcuts:**\n" .
                      "• `/jira bug Fix login issue` - Create bug\n" .
-                     "• `/jira bug Fix login issue @developer` - Create bug and assign\n" .
+                     "• `/jira bug Fix login issue @omartuhin` - Create bug and assign\n" .
                      "• `/jira task Update docs` - Create task\n" .
-                     "• `/jira task Update docs @writer` - Create task and assign\n" .
+                     "• `/jira task Update docs @rahmantanvir` - Create task and assign\n" .
                      "• `/jira story Add feature` - Create story\n" .
-                     "• `/jira story Add feature @dev` - Create story and assign\n\n" .
+                     "• `/jira story Add feature @developer` - Create story and assign\n" .
+                     "• `/jira subtask PROJ-123 Fix login bug` - Create subtask\n" .
+                     "• `/jira sub PROJ-123 Fix login bug` - Create subtask (short alias)\n" .
+                     "• `/jira subtask PROJ-123 Fix login bug @omartuhin` - Create subtask and assign\n" .
+                     "• `/jira sub PROJ-123 Fix login bug @rahmantanvir` - Create subtask and assign (short alias)\n\n" .
                      "**🔍 View & Manage Issues:**\n" .
                      "• `/jira view PROJ-123` - View issue details\n" .
                      "• `/jira assign PROJ-123 user@company.com` - Assign issue\n" .
-                     "• `/jira assign PROJ-123 @username` - Assign issue (using @username)\n" .
+                     "• `/jira assign PROJ-123 @omartuhin` - Assign issue (using @username)\n" .
                      "• `/jira find user@company.com` - Find Jira user\n" .
-                     "• `/jira find @username` - Find Jira user (using @username)\n\n" .
+                     "• `/jira find @rahmantanvir` - Find Jira user (using @username)\n\n" .
                      "**⚙️ Channel Management:**\n" .
                      "• `/jira bind PROJ` - Bind channel to project\n" .
                      "• `/jira unbind` - Remove project binding\n" .
@@ -1866,7 +1950,9 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira create Fix login bug @developer`\n" .
                      "• `/jira bug PROJ Fix login issue`\n" .
                      "• `/jira view PROJ-123`\n" .
-                     "• `/jira assign PROJ-123 @developer`\n" .
+                     "• `/jira assign PROJ-123 @omartuhin`\n" .
+                     "• `/jira subtask PROJ-123 Fix login bug @rahmantanvir`\n" .
+                     "• `/jira sub PROJ-123 Fix login bug @developer`\n" .
                      "• `/jira bind PROJ`\n\n" .
                      "**Need more help?** Run `/jira help` again or contact your administrator.";
         
@@ -2074,5 +2160,167 @@ class WP_MM_Slash_Jira_API {
         }
 
         return null;
+    }
+    
+    /**
+     * Create subtask in Jira via API
+     */
+    private function create_subtask_in_jira($parent_issue_key, $title, $user_name, $channel_name, $assignee = null) {
+        $jira_domain = get_option('wp_mm_slash_jira_jira_domain');
+        $api_key = get_option('wp_mm_slash_jira_api_key');
+        
+        if (empty($jira_domain) || empty($api_key)) {
+            return array('success' => false, 'error' => 'Jira configuration not set up');
+        }
+        
+        // Clean and validate the Jira domain
+        $jira_domain = $this->clean_jira_domain($jira_domain);
+        
+        if (empty($jira_domain)) {
+            return array('success' => false, 'error' => 'Invalid Jira domain format. Please use format: your-domain.atlassian.net');
+        }
+        
+        // First, get the parent issue to determine the project
+        $parent_issue_result = $this->get_issue_details_from_jira($parent_issue_key);
+        if (!$parent_issue_result['success']) {
+            return array('success' => false, 'error' => "Parent issue {$parent_issue_key} not found or not accessible");
+        }
+        
+        // Extract project key from parent issue key
+        $project_key = explode('-', $parent_issue_key)[0];
+        
+        $data = array(
+            'fields' => array(
+                'project' => array(
+                    'key' => $project_key
+                ),
+                'summary' => $title,
+                'description' => "Subtask created via Mattermost slash command by @{$user_name} from channel #{$channel_name}",
+                'issuetype' => array(
+                    'name' => 'Subtask'
+                ),
+                'parent' => array(
+                    'key' => $parent_issue_key
+                )
+            )
+        );
+        
+        // Try to automatically set reporter if email domain is configured
+        $email_domain = get_option('wp_mm_slash_jira_email_domain');
+        if (!empty($email_domain)) {
+            $reporter_user = $this->find_user_by_username_and_domain($user_name, $email_domain);
+            if ($reporter_user && isset($reporter_user['accountId'])) {
+                $data['fields']['reporter'] = array(
+                    'accountId' => $reporter_user['accountId']
+                );
+            }
+        }
+        
+        // Try to set assignee if provided
+        if (!empty($assignee)) {
+            $assignee_email = null;
+            
+            // Determine if assignee is @username or email
+            if (strpos($assignee, '@') === 0) {
+                // @username format - construct email using configured domain
+                $username = substr($assignee, 1); // Remove @
+                if (!empty($email_domain)) {
+                    $assignee_email = $username . '@' . $email_domain;
+                } else {
+                    return array('success' => false, 'error' => 'Email domain not configured. Cannot assign by @username. Please use full email address or contact administrator to configure email domain.');
+                }
+            } elseif (filter_var($assignee, FILTER_VALIDATE_EMAIL)) {
+                // Full email address provided
+                $assignee_email = $assignee;
+            } else {
+                return array('success' => false, 'error' => 'Invalid assignee format. Please use @username or full email address.');
+            }
+            
+            // Get assignee account ID
+            $assignee_user = $this->find_user_by_email($assignee_email);
+            if ($assignee_user && isset($assignee_user['accountId'])) {
+                $data['fields']['assignee'] = array(
+                    'accountId' => $assignee_user['accountId']
+                );
+            } else {
+                return array('success' => false, 'error' => "User with email {$assignee_email} not found in Jira");
+            }
+        }
+        
+        $url = "https://{$jira_domain}/rest/api/2/issue";
+        $auth_header = $this->get_auth_header();
+        if (!$auth_header) {
+            return array('success' => false, 'error' => 'Jira API credentials not configured');
+        }
+        
+        $request_headers = array(
+            'Authorization' => $auth_header,
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json'
+        );
+        $request_body = json_encode($data);
+        
+        $start_time = microtime(true);
+        
+        $response = $this->make_http_request($url, array(
+            'method' => 'POST',
+            'headers' => $request_headers,
+            'body' => $request_body,
+            'timeout' => 30
+        ));
+        
+        $execution_time = microtime(true) - $start_time;
+        
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            $this->logger->log_jira_curl(
+                'POST',
+                $url,
+                $request_headers,
+                $request_body,
+                0,
+                array(),
+                '',
+                $execution_time,
+                'error',
+                $error_message
+            );
+            return array('success' => false, 'error' => $error_message);
+        }
+        
+        $response_code = isset($response['response']['code']) ? $response['response']['code'] : 0;
+        $response_headers = isset($response['headers']) ? $response['headers'] : array();
+        $response_body = isset($response['body']) ? $response['body'] : '';
+        $result = json_decode($response_body, true);
+        
+        // Log the curl payload
+        $status = ($response_code === 201 && isset($result['key'])) ? 'success' : 'error';
+        $error_message = null;
+        if ($status === 'error') {
+            $error_message = isset($result['errorMessages']) ? implode(', ', $result['errorMessages']) : 'Unknown error';
+        }
+        
+        $this->logger->log_jira_curl(
+            'POST',
+            $url,
+            $request_headers,
+            $request_body,
+            $response_code,
+            $response_headers,
+            $response_body,
+            $execution_time,
+            $status,
+            $error_message
+        );
+        
+        if ($response_code === 201 && isset($result['key'])) {
+            return array(
+                'success' => true,
+                'issue_key' => $result['key'],
+                'url' => "https://{$jira_domain}/browse/{$result['key']}"
+            );
+        } else {
+            return array('success' => false, 'error' => $error_message);
+        }
     }
 }

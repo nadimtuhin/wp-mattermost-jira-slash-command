@@ -17,7 +17,7 @@ echo "<h1>Testing Assign-During-Creation Functionality</h1>\n";
 
 // Test configuration
 $test_email_domain = 'company.com';
-$test_username = 'developer';
+$test_username = 'omartuhin';
 $test_email = $test_username . '@' . $test_email_domain;
 
 // Test 1: Check if email domain is configured
@@ -35,16 +35,16 @@ if (empty($current_domain)) {
 // Test 2: Command parsing examples
 echo "<h2>Test 2: Command Parsing Examples</h2>\n";
 echo "<h3>Create with Assignment Examples:</h3>\n";
-echo "• <code>/jira create Fix login bug @developer</code> - Create and assign by username\n";
-echo "• <code>/jira create PROJ Fix login bug @developer</code> - Create with project and assign\n";
-echo "• <code>/jira create Bug:Fix login bug @developer</code> - Create with type and assign\n";
-echo "• <code>/jira create PROJ Bug:Fix login bug @developer</code> - Create with project, type, and assign\n";
-echo "• <code>/jira create Fix login bug developer@company.com</code> - Create and assign by email\n\n";
+echo "• <code>/jira create Fix login bug @omartuhin</code> - Create and assign by username\n";
+echo "• <code>/jira create PROJ Fix login bug @omartuhin</code> - Create with project and assign\n";
+echo "• <code>/jira create Bug:Fix login bug @omartuhin</code> - Create with type and assign\n";
+echo "• <code>/jira create PROJ Bug:Fix login bug @omartuhin</code> - Create with project, type, and assign\n";
+echo "• <code>/jira create Fix login bug omartuhin@company.com</code> - Create and assign by email\n\n";
 
 echo "<h3>Quick Shortcut Examples:</h3>\n";
-echo "• <code>/jira bug Fix login issue @developer</code> - Create bug and assign\n";
-echo "• <code>/jira task Update docs @writer</code> - Create task and assign\n";
-echo "• <code>/jira story Add feature @dev</code> - Create story and assign\n\n";
+echo "• <code>/jira bug Fix login issue @omartuhin</code> - Create bug and assign\n";
+echo "• <code>/jira task Update docs @rahmantanvir</code> - Create task and assign\n";
+echo "• <code>/jira story Add feature @developer</code> - Create story and assign\n\n";
 
 // Test 3: Input validation examples
 echo "<h2>Test 3: Input Validation</h2>\n";
@@ -70,23 +70,23 @@ echo "3. **Assignee**: Checks if last word is @username or email\n";
 echo "4. **Title**: Everything else becomes the issue title\n\n";
 
 echo "<h3>Parsing Examples:</h3>\n";
-echo "• <code>/jira create PROJ Fix login bug @developer</code>\n";
+echo "• <code>/jira create PROJ Fix login bug @omartuhin</code>\n";
 echo "  - Project: PROJ\n";
 echo "  - Type: Task (default)\n";
 echo "  - Title: Fix login bug\n";
-echo "  - Assignee: @developer\n\n";
+echo "  - Assignee: @omartuhin\n\n";
 
-echo "• <code>/jira create Bug:Fix login bug @developer</code>\n";
+echo "• <code>/jira create Bug:Fix login bug @omartuhin</code>\n";
 echo "  - Project: (from channel mapping)\n";
 echo "  - Type: Bug\n";
 echo "  - Title: Fix login bug\n";
-echo "  - Assignee: @developer\n\n";
+echo "  - Assignee: @omartuhin\n\n";
 
-echo "• <code>/jira create PROJ Bug:Fix login bug @developer</code>\n";
+echo "• <code>/jira create PROJ Bug:Fix login bug @omartuhin</code>\n";
 echo "  - Project: PROJ\n";
 echo "  - Type: Bug\n";
 echo "  - Title: Fix login bug\n";
-echo "  - Assignee: @developer\n\n";
+echo "  - Assignee: @omartuhin\n\n";
 
 // Test 5: Error handling
 echo "<h2>Test 5: Error Handling</h2>\n";
@@ -108,10 +108,10 @@ echo "• Shows all valid formats\n\n";
 // Test 6: Help text verification
 echo "<h2>Test 6: Help Text Verification</h2>\n";
 echo "The help command now includes:\n";
-echo "• <code>/jira create Fix login bug @developer</code> - Create and assign\n";
-echo "• <code>/jira bug Fix login issue @developer</code> - Create bug and assign\n";
-echo "• <code>/jira task Update docs @writer</code> - Create task and assign\n";
-echo "• <code>/jira story Add feature @dev</code> - Create story and assign\n\n";
+echo "• <code>/jira create Fix login bug @omartuhin</code> - Create and assign\n";
+echo "• <code>/jira bug Fix login issue @omartuhin</code> - Create bug and assign\n";
+echo "• <code>/jira task Update docs @rahmantanvir</code> - Create task and assign\n";
+echo "• <code>/jira story Add feature @developer</code> - Create story and assign\n\n";
 
 // Test 7: Backward compatibility
 echo "<h2>Test 7: Backward Compatibility</h2>\n";
@@ -120,7 +120,7 @@ echo "• <code>/jira create Fix login bug</code> - Basic create\n";
 echo "• <code>/jira create PROJ Fix login bug</code> - Create with project\n";
 echo "• <code>/jira create Bug:Fix login bug</code> - Create with type\n";
 echo "• <code>/jira bug Fix login issue</code> - Quick shortcut\n";
-echo "• <code>/jira assign PROJ-123 @developer</code> - Separate assign\n\n";
+echo "• <code>/jira assign PROJ-123 @omartuhin</code> - Separate assign\n\n";
 
 echo "<h2>Summary</h2>\n";
 if (!empty($current_domain)) {
@@ -135,10 +135,10 @@ if (!empty($current_domain)) {
 
 echo "\n<h2>Usage Instructions</h2>\n";
 echo "<h3>For Users:</h3>\n";
-echo "1. Create and assign: <code>/jira create Fix login bug @developer</code>\n";
-echo "2. Create with project and assign: <code>/jira create PROJ Fix login bug @developer</code>\n";
-echo "3. Create with type and assign: <code>/jira create Bug:Fix login bug @developer</code>\n";
-echo "4. Quick shortcuts: <code>/jira bug Fix login issue @developer</code>\n";
+echo "1. Create and assign: <code>/jira create Fix login bug @omartuhin</code>\n";
+echo "2. Create with project and assign: <code>/jira create PROJ Fix login bug @omartuhin</code>\n";
+echo "3. Create with type and assign: <code>/jira create Bug:Fix login bug @omartuhin</code>\n";
+echo "4. Quick shortcuts: <code>/jira bug Fix login issue @omartuhin</code>\n";
 echo "5. Still works without assignment: <code>/jira create Fix login bug</code>\n\n";
 
 echo "<h3>For Administrators:</h3>\n";
