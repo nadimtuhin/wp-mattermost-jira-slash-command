@@ -105,6 +105,8 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             padding: 20px;
+            overflow-y: auto;
+            max-height: 600px;
         }
         
         .chat-main {
@@ -250,7 +252,7 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
         .quick-commands {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
         
         .quick-command {
@@ -259,13 +261,73 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
             border: 1px solid #e1e5e9;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             transition: all 0.2s;
+            line-height: 1.3;
         }
         
         .quick-command:hover {
             background: #e1e5e9;
             border-color: #0052cc;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .quick-command-category {
+            margin-top: 15px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: #6b778c;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #e1e5e9;
+            padding-bottom: 4px;
+        }
+        
+        .quick-command.create {
+            background: #e3fcef;
+            border-color: #36b37e;
+        }
+        
+        .quick-command.create:hover {
+            background: #d1f7e3;
+        }
+        
+        .quick-command.shortcut {
+            background: #fff7e6;
+            border-color: #ff8b00;
+        }
+        
+        .quick-command.shortcut:hover {
+            background: #ffe6cc;
+        }
+        
+        .quick-command.view {
+            background: #e6f4ff;
+            border-color: #1890ff;
+        }
+        
+        .quick-command.view:hover {
+            background: #bae7ff;
+        }
+        
+        .quick-command.assign {
+            background: #f6ffed;
+            border-color: #52c41a;
+        }
+        
+        .quick-command.assign:hover {
+            background: #d9f7be;
+        }
+        
+        .quick-command.manage {
+            background: #fff2e8;
+            border-color: #fa8c16;
+        }
+        
+        .quick-command.manage:hover {
+            background: #ffd8bf;
         }
         
         .mappings-list {
@@ -378,14 +440,54 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
                 <div class="sidebar-section">
                     <h4>Quick Commands</h4>
                     <div class="quick-commands">
-                        <div class="quick-command" data-command="create Fix login bug">create Fix login bug</div>
-                        <div class="quick-command" data-command="create PROJ-123 Add new feature">create PROJ-123 Add new feature</div>
-                        <div class="quick-command" data-command="assign PROJ-123 developer@company.com">assign PROJ-123 developer@company.com</div>
-                        <div class="quick-command" data-command="bind PROJ">bind PROJ</div>
-                        <div class="quick-command" data-command="status">status</div>
-                        <div class="quick-command" data-command="link">link</div>
-                        <div class="quick-command" data-command="board">board</div>
-                        <div class="quick-command" data-command="help">help</div>
+                        <!-- Basic Create Commands -->
+                        <div class="quick-command-category">Create Issues</div>
+                        <div class="quick-command create" data-command="create Fix login bug">create Fix login bug</div>
+                        <div class="quick-command create" data-command="create PROJ-123 Add new feature">create PROJ-123 Add new feature</div>
+                        
+                        <!-- Shortcut Commands -->
+                        <div class="quick-command-category">Quick Create (Shortcuts)</div>
+                        <div class="quick-command shortcut" data-command="bug Fix login issue">bug Fix login issue</div>
+                        <div class="quick-command shortcut" data-command="task Update documentation">task Update documentation</div>
+                        <div class="quick-command shortcut" data-command="story Add new feature">story Add new feature</div>
+                        <div class="quick-command shortcut" data-command="bug PROJ Fix login issue">bug PROJ Fix login issue</div>
+                        <div class="quick-command shortcut" data-command="task PROJ Update docs">task PROJ Update docs</div>
+                        <div class="quick-command shortcut" data-command="story PROJ Add feature">story PROJ Add feature</div>
+                        
+                        <!-- Task Type Commands -->
+                        <div class="quick-command-category">Create with Type</div>
+                        <div class="quick-command create" data-command="create Bug:Fix login issue">create Bug:Fix login issue</div>
+                        <div class="quick-command create" data-command="create Story:Add new feature">create Story:Add new feature</div>
+                        <div class="quick-command create" data-command="create Task:Update documentation">create Task:Update documentation</div>
+                        <div class="quick-command create" data-command="create Epic:Major system overhaul">create Epic:Major system overhaul</div>
+                        <div class="quick-command create" data-command="create Improvement:Enhance UI">create Improvement:Enhance UI</div>
+                        <div class="quick-command create" data-command="create PROJ Bug:Fix login issue">create PROJ Bug:Fix login issue</div>
+                        <div class="quick-command create" data-command="create PROJ Story:Add feature">create PROJ Story:Add feature</div>
+                        <div class="quick-command create" data-command="create PROJ Task:Update docs">create PROJ Task:Update docs</div>
+                        
+                        <!-- View Commands -->
+                        <div class="quick-command-category">View Issues</div>
+                        <div class="quick-command view" data-command="view PROJ-123">view PROJ-123</div>
+                        <div class="quick-command view" data-command="view BUG-456">view BUG-456</div>
+                        <div class="quick-command view" data-command="view STORY-789">view STORY-789</div>
+                        
+                        <!-- Assignment Commands -->
+                        <div class="quick-command-category">Assign Issues</div>
+                        <div class="quick-command assign" data-command="assign PROJ-123 developer@company.com">assign PROJ-123 developer@company.com</div>
+                        <div class="quick-command assign" data-command="assign BUG-456 tester@company.com">assign BUG-456 tester@company.com</div>
+                        
+                        <!-- Channel Management -->
+                        <div class="quick-command-category">Channel Management</div>
+                        <div class="quick-command manage" data-command="bind PROJ">bind PROJ</div>
+                        <div class="quick-command manage" data-command="bind BUG">bind BUG</div>
+                        <div class="quick-command manage" data-command="bind STORY">bind STORY</div>
+                        <div class="quick-command manage" data-command="status">status</div>
+                        
+                        <!-- Links and Help -->
+                        <div class="quick-command-category">Links & Help</div>
+                        <div class="quick-command manage" data-command="link">link</div>
+                        <div class="quick-command manage" data-command="board">board</div>
+                        <div class="quick-command manage" data-command="help">help</div>
                     </div>
                 </div>
                 
@@ -416,6 +518,14 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
                     <div class="message bot">
                         <div>👋 Welcome to the Jira Slash Command Tester!</div>
                         <div>Try typing a command like <code>/jira create Fix login bug</code> or use the quick commands on the left.</div>
+                        <div><strong>Available Commands:</strong></div>
+                        <div>• <code>/jira create</code> - Create issues with optional type</div>
+                        <div>• <code>/jira bug</code>, <code>/jira task</code>, <code>/jira story</code> - Quick create shortcuts</div>
+                        <div>• <code>/jira view PROJ-123</code> - View detailed issue information</div>
+                        <div>• <code>/jira assign</code> - Assign issues to users</div>
+                        <div>• <code>/jira bind</code> - Bind channels to projects</div>
+                        <div>• <code>/jira status</code>, <code>/jira link</code>, <code>/jira board</code> - Channel management</div>
+                        <div>• <code>/jira help</code> - Show all available commands</div>
                         <div class="message-time"><?php echo date('H:i'); ?></div>
                     </div>
                 </div>
