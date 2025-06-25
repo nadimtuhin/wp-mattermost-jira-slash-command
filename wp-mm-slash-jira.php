@@ -3,7 +3,7 @@
  * Plugin Name: WP Mattermost Jira Slash Command
  * Plugin URI: https://github.com/nadimtuhin/wp-mattermost-jira-slash-command
  * Description: WordPress plugin to handle Mattermost slash commands for Jira integration
- * Version: 1.2.0
+ * Version: 1.3.0
  * Author: Nadim Tuhin
  * License: GPL v2 or later
  * Text Domain: wp-mm-slash-jira
