@@ -7,6 +7,19 @@ class WP_MM_Slash_Jira_API {
     private $logger;
     
     /**
+     * Get authentication header for Jira API calls
+     */
+    private function get_auth_header() {
+        $api_user_email = get_option('wp_mm_slash_jira_api_user_email');
+        $api_key = get_option('wp_mm_slash_jira_api_key');
+        
+        if (empty($api_user_email) || empty($api_key)) {
+            return false;
+        }
+        return 'Basic ' . base64_encode($api_user_email . ':' . $api_key);
+    }
+    
+    /**
      * Check if current user has admin permissions using multiple methods
      */
     public function check_admin_permissions() {
@@ -136,13 +149,25 @@ class WP_MM_Slash_Jira_API {
         $parts = explode(' ', trim($text));
         $project_key = null;
         
-        // Check if project key is provided in command (e.g., "create PROJ-123 title")
-        if (count($parts) >= 2 && preg_match('/^[A-Z]+-\d+$/', $parts[1])) {
-            $project_key = explode('-', $parts[1])[0];
-            $issue_key = $parts[1];
-            $title = implode(' ', array_slice($parts, 2));
-        } else {
-            // Get project key from channel mapping
+        // Check if project key is provided in command
+        if (count($parts) >= 2) {
+            $second_part = $parts[1];
+            
+            // Check if it's a full issue key format (e.g., "PROJ-123")
+            if (preg_match('/^[A-Z]+-\d+$/', $second_part)) {
+                $project_key = explode('-', $second_part)[0];
+                $issue_key = $second_part;
+                $title = implode(' ', array_slice($parts, 2));
+            }
+            // Check if it's just a project key (e.g., "TPFIJB")
+            elseif (preg_match('/^[A-Z0-9]+$/', $second_part) && strlen($second_part) <= 10) {
+                $project_key = $second_part;
+                $title = implode(' ', array_slice($parts, 2));
+            }
+        }
+        
+        // If no project key found in command, get from channel mapping
+        if (!$project_key) {
             $table_name = $wpdb->prefix . 'mm_jira_mappings';
             $mapping = $wpdb->get_row($wpdb->prepare(
                 "SELECT jira_project_key FROM $table_name WHERE channel_id = %s",
@@ -152,7 +177,7 @@ class WP_MM_Slash_Jira_API {
             if (!$mapping) {
                 return array(
                     'response_type' => 'ephemeral',
-                    'text' => "❌ No Jira project mapped to this channel. Please contact an administrator to set up the mapping or specify a project key in your command (e.g., `/jira create PROJ-123 Task title`)."
+                    'text' => "❌ No Jira project mapped to this channel. Please contact an administrator to set up the mapping or specify a project key in your command (e.g., `/jira create TPFIJB Add new feature` or `/jira create PROJ-123 Task title`)."
                 );
             }
             
@@ -163,7 +188,7 @@ class WP_MM_Slash_Jira_API {
         if (empty($title)) {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Please provide a title for the issue. Usage: `/jira create [PROJECT-KEY-ISSUE-NUMBER] Title` or `/jira create Title`"
+                'text' => "❌ Please provide a title for the issue. Usage: `/jira create [PROJECT-KEY] Title` or `/jira create [PROJECT-KEY-ISSUE-NUMBER] Title` or `/jira create Title`"
             );
         }
         
@@ -262,8 +287,13 @@ class WP_MM_Slash_Jira_API {
         );
         
         $url = "https://{$jira_domain}/rest/api/2/issue/{$issue_key}/assignee";
+        $auth_header = $this->get_auth_header();
+        if (!$auth_header) {
+            return array('success' => false, 'error' => 'Jira API credentials not configured');
+        }
+        
         $request_headers = array(
-            'Authorization' => 'Basic ' . base64_encode($api_key . ':'),
+            'Authorization' => $auth_header,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json'
         );
@@ -346,8 +376,13 @@ class WP_MM_Slash_Jira_API {
         }
         
         $url = "https://{$jira_domain}/rest/api/2/user/search?query=" . urlencode($email);
+        $auth_header = $this->get_auth_header();
+        if (!$auth_header) {
+            return false;
+        }
+        
         $request_headers = array(
-            'Authorization' => 'Basic ' . base64_encode($api_key . ':'),
+            'Authorization' => $auth_header,
             'Accept' => 'application/json'
         );
         
@@ -745,8 +780,13 @@ class WP_MM_Slash_Jira_API {
         );
         
         $url = "https://{$jira_domain}/rest/api/2/issue";
+        $auth_header = $this->get_auth_header();
+        if (!$auth_header) {
+            return array('success' => false, 'error' => 'Jira API credentials not configured');
+        }
+        
         $request_headers = array(
-            'Authorization' => 'Basic ' . base64_encode($api_key . ':'),
+            'Authorization' => $auth_header,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json'
         );
@@ -845,7 +885,8 @@ class WP_MM_Slash_Jira_API {
             'text' => "**Jira Slash Command Help**\n\n" .
                      "**Create an issue:**\n" .
                      "• `/jira create Title` - Creates issue in mapped project\n" .
-                     "• `/jira create PROJ-123 Title` - Creates issue with specific project key\n\n" .
+                     "• `/jira create PROJECT-KEY Title` - Creates issue with specific project key\n" .
+                     "• `/jira create PROJ-123 Title` - Creates issue with specific project key (legacy format)\n\n" .
                      "**Assign an issue:**\n" .
                      "• `/jira assign PROJ-123 user@example.com` - Assigns issue to user by email\n\n" .
                      "**Bind channel to project:**\n" .
@@ -857,6 +898,7 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira board` - Get links to Jira boards and backlogs\n\n" .
                      "**Examples:**\n" .
                      "• `/jira create Fix login bug`\n" .
+                     "• `/jira create TPFIJB Add new feature`\n" .
                      "• `/jira create PROJ-456 Add new feature`\n" .
                      "• `/jira assign PROJ-123 developer@company.com`\n" .
                      "• `/jira bind PROJ` - Bind channel to PROJ project\n" .

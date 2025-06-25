@@ -311,6 +311,32 @@ jQuery(document).ready(function($) {
                 html += '<h4>Response Body</h4>';
                 html += '<pre class="payload-display">' + curlPayload.response.body + '</pre>';
             }
+            
+            // Add curl command for Jira API testing
+            html += '<h4>🔧 Curl Command for Testing</h4>';
+            html += '<p>Use this curl command to reproduce the exact Jira API call:</p>';
+            html += '<div class="curl-command-container">';
+            html += '<pre class="curl-command">';
+            html += 'curl -X ' + curlPayload.method + ' "' + curlPayload.url + '" \\';
+            
+            // Add headers
+            if (curlPayload.request.headers) {
+                for (var header in curlPayload.request.headers) {
+                    if (curlPayload.request.headers.hasOwnProperty(header)) {
+                        html += '\n  -H "' + header + ': ' + curlPayload.request.headers[header] + '" \\';
+                    }
+                }
+            }
+            
+            // Add body if present
+            if (curlPayload.request.body) {
+                html += '\n  -d \'' + curlPayload.request.body.replace(/'/g, "'\"'\"'") + '\'';
+            }
+            
+            html += '</pre>';
+            html += '<button type="button" class="button button-small copy-curl" data-command="' + htmlEscape(generateCurlCommand(curlPayload)) + '">📋 Copy Command</button>';
+            html += '</div>';
+            
         } else {
             // Regular webhook log
             html += '<h4>Request Payload</h4>';
@@ -318,11 +344,146 @@ jQuery(document).ready(function($) {
             
             html += '<h4>Response Payload</h4>';
             html += '<pre class="payload-display">' + (log.response_payload_formatted || log.response_payload || 'No response') + '</pre>';
+            
+            // Add curl command for webhook testing
+            html += '<h4>🔧 Curl Command for Testing</h4>';
+            html += '<p>Use this curl command to reproduce the exact webhook call:</p>';
+            html += '<div class="curl-command-container">';
+            html += '<pre class="curl-command">';
+            
+            // Parse the request payload to extract parameters
+            var webhookParams = parseWebhookPayload(log.request_payload);
+            var curlCmd = 'curl -X POST "' + wp_mm_slash_jira.rest_url + 'jira" \\';
+            
+            if (webhookParams) {
+                for (var param in webhookParams) {
+                    if (webhookParams.hasOwnProperty(param)) {
+                        curlCmd += '\n  -d "' + param + '=' + webhookParams[param] + '" \\';
+                    }
+                }
+                curlCmd = curlCmd.slice(0, -2); // Remove trailing backslash and space
+            }
+            
+            html += curlCmd;
+            html += '</pre>';
+            html += '<button type="button" class="button button-small copy-curl" data-command="' + htmlEscape(curlCmd) + '">📋 Copy Command</button>';
+            html += '</div>';
         }
         
         html += '</div>';
         
         $('#log-details').html(html);
+        
+        // Add click handler for copy buttons
+        $('.copy-curl').click(function() {
+            var command = $(this).data('command');
+            copyToClipboard(command);
+            $(this).text('✅ Copied!').prop('disabled', true);
+            setTimeout(function() {
+                $('.copy-curl').text('📋 Copy Command').prop('disabled', false);
+            }, 2000);
+        });
+    }
+    
+    // Helper function to generate curl command for Jira API calls
+    function generateCurlCommand(curlPayload) {
+        var cmd = 'curl -X ' + curlPayload.method + ' "' + curlPayload.url + '" \\';
+        
+        // Add headers
+        if (curlPayload.request.headers) {
+            for (var header in curlPayload.request.headers) {
+                if (curlPayload.request.headers.hasOwnProperty(header)) {
+                    cmd += '\n  -H "' + header + ': ' + curlPayload.request.headers[header] + '" \\';
+                }
+            }
+        }
+        
+        // Add body if present
+        if (curlPayload.request.body) {
+            cmd += '\n  -d \'' + curlPayload.request.body.replace(/'/g, "'\"'\"'") + '\'';
+        }
+        
+        return cmd;
+    }
+    
+    // Helper function to parse webhook payload and extract parameters
+    function parseWebhookPayload(payload) {
+        try {
+            var data = JSON.parse(payload);
+            var params = {};
+            
+            // Extract common webhook parameters
+            if (data.token) params.token = data.token;
+            if (data.channel_id) params.channel_id = data.channel_id;
+            if (data.channel_name) params.channel_name = data.channel_name;
+            if (data.text) params.text = data.text;
+            if (data.user_name) params.user_name = data.user_name;
+            if (data.user_id) params.user_id = data.user_id;
+            if (data.team_id) params.team_id = data.team_id;
+            if (data.team_domain) params.team_domain = data.team_domain;
+            if (data.command) params.command = data.command;
+            if (data.response_url) params.response_url = data.response_url;
+            
+            return params;
+        } catch (e) {
+            // If not JSON, try to parse as form data
+            var params = {};
+            var pairs = payload.split('&');
+            for (var i = 0; i < pairs.length; i++) {
+                var pair = pairs[i].split('=');
+                if (pair.length === 2) {
+                    params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+                }
+            }
+            return params;
+        }
+    }
+    
+    // Helper function to escape HTML
+    function htmlEscape(str) {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+    
+    // Helper function to copy text to clipboard
+    function copyToClipboard(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            // Use modern clipboard API
+            navigator.clipboard.writeText(text).then(function() {
+                console.log('Text copied to clipboard');
+            }).catch(function(err) {
+                console.error('Failed to copy text: ', err);
+                fallbackCopyToClipboard(text);
+            });
+        } else {
+            // Fallback for older browsers
+            fallbackCopyToClipboard(text);
+        }
+    }
+    
+    // Fallback copy function
+    function fallbackCopyToClipboard(text) {
+        var textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            console.log('Text copied to clipboard (fallback)');
+        } catch (err) {
+            console.error('Fallback copy failed: ', err);
+        }
+        
+        document.body.removeChild(textArea);
     }
     
     // Create tables button

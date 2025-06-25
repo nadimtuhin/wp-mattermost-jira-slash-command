@@ -24,6 +24,7 @@ class WP_MM_Slash_Jira_Admin {
     
     public function register_settings() {
         register_setting('wp_mm_slash_jira_options', 'wp_mm_slash_jira_jira_domain');
+        register_setting('wp_mm_slash_jira_options', 'wp_mm_slash_jira_api_user_email');
         register_setting('wp_mm_slash_jira_options', 'wp_mm_slash_jira_api_key');
         register_setting('wp_mm_slash_jira_options', 'wp_mm_slash_jira_webhook_token');
         register_setting('wp_mm_slash_jira_options', 'wp_mm_slash_jira_enable_logging');
@@ -135,12 +136,21 @@ class WP_MM_Slash_Jira_Admin {
                             </td>
                         </tr>
                         <tr>
+                            <th scope="row">Jira API User Email</th>
+                            <td>
+                                <input type="email" name="wp_mm_slash_jira_api_user_email" 
+                                       value="<?php echo esc_attr(get_option('wp_mm_slash_jira_api_user_email')); ?>" 
+                                       class="regular-text" placeholder="user@example.com" />
+                                <p class="description">Your Jira account email address</p>
+                            </td>
+                        </tr>
+                        <tr>
                             <th scope="row">Jira API Key</th>
                             <td>
                                 <input type="password" name="wp_mm_slash_jira_api_key" 
                                        value="<?php echo esc_attr(get_option('wp_mm_slash_jira_api_key')); ?>" 
                                        class="regular-text" id="jira_api_key" />
-                                <p class="description">Your Jira API key (email:api_token)</p>
+                                <p class="description">Your Jira API token (not the email:token format)</p>
                                 <button type="button" class="button button-small" onclick="togglePasswordVisibility('jira_api_key')">Show/Hide</button>
                             </td>
                         </tr>
@@ -597,6 +607,18 @@ class WP_MM_Slash_Jira_Admin {
                             🔐 Test Authentication
                         </a>
                         <p class="description">Test nonce generation, REST API authentication, and AJAX calls. Opens in a new tab.</p>
+                    </div>
+                </div>
+                
+                <div class="testing-section">
+                    <h3>🔧 Curl Commands Testing</h3>
+                    <p>Test the new curl command functionality in log details:</p>
+                    
+                    <div class="curl-test-link">
+                        <a href="<?php echo esc_url(plugin_dir_url(__FILE__) . '../test-curl-commands.php'); ?>" target="_blank" class="button button-secondary">
+                            🔧 Test Curl Commands
+                        </a>
+                        <p class="description">Demonstrate curl command generation and copy functionality. Opens in a new tab.</p>
                     </div>
                 </div>
                 

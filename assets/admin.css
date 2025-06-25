@@ -289,6 +289,107 @@
     overflow-y: auto;
 }
 
+/* Curl command styles */
+.curl-command-container {
+    background: #f8f9fa;
+    border: 1px solid #e1e5e9;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 10px 0;
+    position: relative;
+}
+
+.curl-command {
+    background: #2d3748;
+    color: #e2e8f0;
+    border: 1px solid #4a5568;
+    padding: 15px;
+    border-radius: 6px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin: 0 0 10px 0;
+    overflow-x: auto;
+    position: relative;
+}
+
+.curl-command::before {
+    content: '💻';
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    font-size: 16px;
+    opacity: 0.7;
+}
+
+.copy-curl {
+    background: #0073aa !important;
+    border-color: #0073aa !important;
+    color: #fff !important;
+    font-size: 12px !important;
+    padding: 5px 12px !important;
+    height: auto !important;
+    line-height: 1.4 !important;
+    transition: all 0.2s ease !important;
+}
+
+.copy-curl:hover {
+    background: #005a87 !important;
+    border-color: #005a87 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.copy-curl:disabled {
+    background: #46b450 !important;
+    border-color: #46b450 !important;
+    cursor: default !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.copy-curl:disabled:hover {
+    background: #46b450 !important;
+    border-color: #46b450 !important;
+}
+
+/* Curl command syntax highlighting */
+.curl-command .method {
+    color: #68d391;
+    font-weight: bold;
+}
+
+.curl-command .url {
+    color: #63b3ed;
+}
+
+.curl-command .header {
+    color: #f6ad55;
+}
+
+.curl-command .data {
+    color: #fc8181;
+}
+
+/* Responsive design for curl commands */
+@media (max-width: 782px) {
+    .curl-command {
+        font-size: 11px;
+        padding: 10px;
+    }
+    
+    .curl-command-container {
+        padding: 10px;
+    }
+    
+    .copy-curl {
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+    }
+}
+
 /* Troubleshooting section */
 .troubleshooting-section {
     margin-top: 30px;
