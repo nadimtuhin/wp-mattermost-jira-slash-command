@@ -262,6 +262,7 @@ class WP_MM_Slash_Jira_API {
         $parts = explode(' ', trim($text));
         $project_key = null;
         $issue_type = null;
+        $assignee = null;
         
         // Check if project key is provided in command
         if (count($parts) >= 2) {
@@ -308,11 +309,11 @@ class WP_MM_Slash_Jira_API {
             $title = implode(' ', array_slice($parts, 1));
         }
         
-        // Parse task type from command if specified
-        // Format: /jira create [PROJECT-KEY] [TYPE:]Title
-        // Examples: /jira create Bug:Fix login issue
-        //          /jira create PROJ Story:Add new feature
-        //          /jira create Task:Update documentation
+        // Parse task type and assignee from command if specified
+        // Format: /jira create [PROJECT-KEY] [TYPE:]Title [@username|email]
+        // Examples: /jira create Bug:Fix login issue @developer
+        //          /jira create PROJ Story:Add new feature @john.doe
+        //          /jira create Task:Update documentation developer@company.com
         if (!empty($title)) {
             $title_parts = explode(':', $title, 2);
             if (count($title_parts) === 2) {
@@ -326,23 +327,39 @@ class WP_MM_Slash_Jira_API {
                     $title = $actual_title;
                 }
             }
+            
+            // Check for assignee at the end of the title
+            $title_words = explode(' ', $title);
+            $last_word = end($title_words);
+            
+            // Check if last word is an assignee (@username or email)
+            if (strpos($last_word, '@') === 0 || filter_var($last_word, FILTER_VALIDATE_EMAIL)) {
+                $assignee = $last_word;
+                // Remove assignee from title
+                array_pop($title_words);
+                $title = implode(' ', $title_words);
+            }
         }
         
         if (empty($title)) {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Please provide a title for the issue. Usage: `/jira create [PROJECT-KEY] Title` or `/jira create [PROJECT-KEY] [TYPE:]Title` or `/jira create Title`\n\n**Examples:**\n• `/jira create Fix login bug`\n• `/jira create Bug:Fix login bug`\n• `/jira create PROJ Story:Add new feature`\n• `/jira create Task:Update documentation`"
+                'text' => "❌ Please provide a title for the issue. Usage: `/jira create [PROJECT-KEY] Title [@username|email]` or `/jira create [PROJECT-KEY] [TYPE:]Title [@username|email]` or `/jira create Title [@username|email]`\n\n**Examples:**\n• `/jira create Fix login bug @developer`\n• `/jira create Bug:Fix login bug @developer`\n• `/jira create PROJ Story:Add new feature @john.doe`\n• `/jira create Task:Update documentation developer@company.com`"
             );
         }
         
         // Create the issue in Jira
-        $result = $this->create_issue_in_jira($project_key, $title, $user_name, $channel_name, $issue_type);
+        $result = $this->create_issue_in_jira($project_key, $title, $user_name, $channel_name, $issue_type, $assignee);
         
         if ($result['success']) {
             $response_text = "✅ Issue created successfully!\n\n**Issue:** {$result['issue_key']}\n**Title:** {$title}\n**Created by:** @{$user_name}\n**Project:** {$project_key}";
             
             if (!empty($issue_type)) {
                 $response_text .= "\n**Type:** {$issue_type}";
+            }
+            
+            if (!empty($assignee)) {
+                $response_text .= "\n**Assigned to:** {$assignee}";
             }
             
             // Add reporter information if it was automatically set
@@ -486,16 +503,16 @@ class WP_MM_Slash_Jira_API {
     private function assign_jira_issue($channel_id, $channel_name, $text, $user_name) {
         $parts = explode(' ', trim($text));
         
-        // Check if we have enough parameters: assign ISSUE-KEY email@example.com
+        // Check if we have enough parameters: assign ISSUE-KEY user@example.com or assign ISSUE-KEY @username
         if (count($parts) < 3) {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Please provide an issue key and email address. Usage: `/jira assign PROJ-123 user@example.com`"
+                'text' => "❌ Please provide an issue key and user. Usage: `/jira assign PROJ-123 user@example.com` or `/jira assign PROJ-123 @username`\n\n**Examples:**\n• `/jira assign PROJ-123 developer@company.com`\n• `/jira assign PROJ-123 @john.doe`\n• `/jira assign PROJ-123 @developer`"
             );
         }
         
         $issue_key = $parts[1];
-        $email = $parts[2];
+        $user_input = $parts[2];
         
         // Validate issue key format
         if (!preg_match('/^[A-Z]+-\d+$/', $issue_key)) {
@@ -505,11 +522,28 @@ class WP_MM_Slash_Jira_API {
             );
         }
         
-        // Validate email format
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        // Determine if input is email or @username
+        $email = null;
+        if (strpos($user_input, '@') === 0) {
+            // @username format - construct email using configured domain
+            $username = substr($user_input, 1); // Remove @
+            $email_domain = get_option('wp_mm_slash_jira_email_domain');
+            
+            if (empty($email_domain)) {
+                return array(
+                    'response_type' => 'ephemeral',
+                    'text' => "❌ Email domain not configured. Please use full email address or contact administrator to configure email domain.\n\n**Usage:** `/jira assign PROJ-123 user@example.com`"
+                );
+            }
+            
+            $email = $username . '@' . $email_domain;
+        } elseif (filter_var($user_input, FILTER_VALIDATE_EMAIL)) {
+            // Full email address provided
+            $email = $user_input;
+        } else {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Invalid email format. Please provide a valid email address."
+                'text' => "❌ Invalid user format. Please use:\n• Full email: `user@example.com`\n• Username: `@username` (requires email domain configuration)\n\n**Examples:**\n• `/jira assign PROJ-123 developer@company.com`\n• `/jira assign PROJ-123 @john.doe`"
             );
         }
         
@@ -517,9 +551,10 @@ class WP_MM_Slash_Jira_API {
         $result = $this->assign_issue_in_jira($issue_key, $email, $user_name);
         
         if ($result['success']) {
+            $display_user = strpos($user_input, '@') === 0 ? $user_input : $email;
             return array(
                 'response_type' => 'in_channel',
-                'text' => "✅ Issue assigned successfully!\n\n**Issue:** {$issue_key}\n**Assigned to:** {$email}\n**Assigned by:** @{$user_name}\n\n[View in Jira]({$result['url']})"
+                'text' => "✅ Issue assigned successfully!\n\n**Issue:** {$issue_key}\n**Assigned to:** {$display_user}\n**Assigned by:** @{$user_name}\n\n[View in Jira]({$result['url']})"
             );
         } else {
             return array(
@@ -929,7 +964,10 @@ class WP_MM_Slash_Jira_API {
                        "• `/jira create Title` - Create issue in {$mapping->jira_project_key}\n" .
                        "• `/jira bind NEWPROJ` - Change to different project\n" .
                        "• `/jira unbind` - Remove current project binding\n" .
-                       "• `/jira assign PROJ-123 user@example.com` - Assign issue\n" .
+                       "• `/jira assign PROJ-123 user@company.com` - Assign issue\n" .
+                       "• `/jira assign PROJ-123 @username` - Assign issue (using @username)\n" .
+                       "• `/jira find user@company.com` - Find Jira user\n" .
+                       "• `/jira find @username` - Find Jira user (using @username)\n" .
                        "• `/jira help` - Show all commands\n\n" .
                        "**Quick examples:**\n" .
                        "• `/jira create Fix login bug`\n" .
@@ -1248,22 +1286,39 @@ class WP_MM_Slash_Jira_API {
             );
         }
         
-        // Parse the email from the command
+        // Parse the user input from the command
         $parts = explode(' ', trim($text));
         if (count($parts) < 2) {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Please provide an email address to search for. Usage: `/jira find user@example.com`\n\n**Examples:**\n• `/jira find developer@company.com`\n• `/jira find john.doe@example.com`"
+                'text' => "❌ Please provide an email address or username to search for. Usage: `/jira find user@example.com` or `/jira find @username`\n\n**Examples:**\n• `/jira find developer@company.com`\n• `/jira find @john.doe`\n• `/jira find @developer`"
             );
         }
         
-        $email = trim($parts[1]);
+        $user_input = trim($parts[1]);
         
-        // Validate email format
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        // Determine if input is email or @username
+        $email = null;
+        if (strpos($user_input, '@') === 0) {
+            // @username format - construct email using configured domain
+            $username = substr($user_input, 1); // Remove @
+            $email_domain = get_option('wp_mm_slash_jira_email_domain');
+            
+            if (empty($email_domain)) {
+                return array(
+                    'response_type' => 'ephemeral',
+                    'text' => "❌ Email domain not configured. Please use full email address or contact administrator to configure email domain.\n\n**Usage:** `/jira find user@example.com`"
+                );
+            }
+            
+            $email = $username . '@' . $email_domain;
+        } elseif (filter_var($user_input, FILTER_VALIDATE_EMAIL)) {
+            // Full email address provided
+            $email = $user_input;
+        } else {
             return array(
                 'response_type' => 'ephemeral',
-                'text' => "❌ Invalid email format. Please provide a valid email address.\n\n**Example:** `/jira find user@example.com`"
+                'text' => "❌ Invalid user format. Please use:\n• Full email: `user@example.com`\n• Username: `@username` (requires email domain configuration)\n\n**Examples:**\n• `/jira find developer@company.com`\n• `/jira find @john.doe`"
             );
         }
         
@@ -1357,10 +1412,10 @@ class WP_MM_Slash_Jira_API {
             }
         }
         
-        $user_text = "🔍 **User Search Results for: {$email}**\n\n";
+        $user_text = "🔍 **User Search Results for: {$user_input}**\n\n";
         
         if (empty($exact_matches) && empty($partial_matches)) {
-            $user_text .= "❌ **No users found** with the email address `{$email}`\n\n";
+            $user_text .= "❌ **No users found** with the search term `{$user_input}`\n\n";
             $user_text .= "**Possible reasons:**\n";
             $user_text .= "• User doesn't exist in Jira\n";
             $user_text .= "• User email is different\n";
@@ -1390,7 +1445,7 @@ class WP_MM_Slash_Jira_API {
             }
             
             $user_text .= "**To assign issues to a user:**\n";
-            $user_text .= "• `/jira assign PROJ-123 {$email}` - Assign issue to user\n\n";
+            $user_text .= "• `/jira assign PROJ-123 {$user_input}` - Assign issue to user\n\n";
             $user_text .= "**Other Commands:**\n";
             $user_text .= "• `/jira view PROJ-123` - View issue details\n";
             $user_text .= "• `/jira create Title` - Create new issue\n";
@@ -1428,7 +1483,7 @@ class WP_MM_Slash_Jira_API {
     /**
      * Create issue in Jira via API
      */
-    private function create_issue_in_jira($project_key, $title, $user_name, $channel_name, $issue_type = null) {
+    private function create_issue_in_jira($project_key, $title, $user_name, $channel_name, $issue_type = null, $assignee = null) {
         $jira_domain = get_option('wp_mm_slash_jira_jira_domain');
         $api_key = get_option('wp_mm_slash_jira_api_key');
         
@@ -1474,6 +1529,37 @@ class WP_MM_Slash_Jira_API {
                 $data['fields']['reporter'] = array(
                     'accountId' => $reporter_user['accountId']
                 );
+            }
+        }
+        
+        // Try to set assignee if provided
+        if (!empty($assignee)) {
+            $assignee_email = null;
+            
+            // Determine if assignee is @username or email
+            if (strpos($assignee, '@') === 0) {
+                // @username format - construct email using configured domain
+                $username = substr($assignee, 1); // Remove @
+                if (!empty($email_domain)) {
+                    $assignee_email = $username . '@' . $email_domain;
+                } else {
+                    return array('success' => false, 'error' => 'Email domain not configured. Cannot assign by @username. Please use full email address or contact administrator to configure email domain.');
+                }
+            } elseif (filter_var($assignee, FILTER_VALIDATE_EMAIL)) {
+                // Full email address provided
+                $assignee_email = $assignee;
+            } else {
+                return array('success' => false, 'error' => 'Invalid assignee format. Please use @username or full email address.');
+            }
+            
+            // Get assignee account ID
+            $assignee_user = $this->find_user_by_email($assignee_email);
+            if ($assignee_user && isset($assignee_user['accountId'])) {
+                $data['fields']['assignee'] = array(
+                    'accountId' => $assignee_user['accountId']
+                );
+            } else {
+                return array('success' => false, 'error' => "User with email {$assignee_email} not found in Jira");
             }
         }
         
@@ -1752,15 +1838,21 @@ class WP_MM_Slash_Jira_API {
                      "**📝 Create Issues (3 ways):**\n" .
                      "**Simple:** `/jira create Fix login bug` (uses channel's project)\n" .
                      "**With project:** `/jira create PROJ Fix login bug`\n" .
-                     "**With type:** `/jira create Bug:Fix login bug`\n\n" .
+                     "**With type:** `/jira create Bug:Fix login bug`\n" .
+                     "**With assignee:** `/jira create Fix login bug @developer`\n\n" .
                      "**⚡ Quick shortcuts:**\n" .
                      "• `/jira bug Fix login issue` - Create bug\n" .
+                     "• `/jira bug Fix login issue @developer` - Create bug and assign\n" .
                      "• `/jira task Update docs` - Create task\n" .
-                     "• `/jira story Add feature` - Create story\n\n" .
+                     "• `/jira task Update docs @writer` - Create task and assign\n" .
+                     "• `/jira story Add feature` - Create story\n" .
+                     "• `/jira story Add feature @dev` - Create story and assign\n\n" .
                      "**🔍 View & Manage Issues:**\n" .
                      "• `/jira view PROJ-123` - View issue details\n" .
                      "• `/jira assign PROJ-123 user@company.com` - Assign issue\n" .
-                     "• `/jira find user@company.com` - Find Jira user\n\n" .
+                     "• `/jira assign PROJ-123 @username` - Assign issue (using @username)\n" .
+                     "• `/jira find user@company.com` - Find Jira user\n" .
+                     "• `/jira find @username` - Find Jira user (using @username)\n\n" .
                      "**⚙️ Channel Management:**\n" .
                      "• `/jira bind PROJ` - Bind channel to project\n" .
                      "• `/jira unbind` - Remove project binding\n" .
@@ -1771,8 +1863,10 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira board` - Get board links\n\n" .
                      "**📋 Examples:**\n" .
                      "• `/jira create Fix login bug`\n" .
+                     "• `/jira create Fix login bug @developer`\n" .
                      "• `/jira bug PROJ Fix login issue`\n" .
                      "• `/jira view PROJ-123`\n" .
+                     "• `/jira assign PROJ-123 @developer`\n" .
                      "• `/jira bind PROJ`\n\n" .
                      "**Need more help?** Run `/jira help` again or contact your administrator.";
         
