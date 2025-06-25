@@ -1,0 +1,23 @@
+# Build artifacts
+*.zip
+build-temp/
+
+# Development files
+*.log
+*.tmp
+*.bak
+*.backup
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.cache
+*.pid 
