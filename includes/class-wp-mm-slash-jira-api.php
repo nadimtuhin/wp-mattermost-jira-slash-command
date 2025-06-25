@@ -705,6 +705,11 @@ class WP_MM_Slash_Jira_API {
                     return $user['accountId'];
                 }
             }
+
+            // If no exact match, return the first user
+            if (count($result) > 0) {
+                return $result[0]['accountId'];
+            }
         }
         
         return false;
