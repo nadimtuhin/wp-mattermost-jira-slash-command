@@ -92,6 +92,139 @@
     font-weight: 600;
 }
 
+/* Log type indicators */
+.log-type-webhook {
+    background: #0073aa;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.log-type-jira-api {
+    background: #0052cc;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* Curl log row styling */
+.curl-log {
+    background-color: #f8f9fa;
+}
+
+.curl-log:hover {
+    background-color: #e9ecef;
+}
+
+/* Log management styles */
+.logs-actions {
+    background: #f9f9f9;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.logs-actions h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.clear-logs-section {
+    margin-top: 15px;
+}
+
+.clear-logs-options {
+    margin-bottom: 20px;
+}
+
+.clear-option {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+}
+
+.clear-option label {
+    font-weight: 600;
+    margin-right: 10px;
+}
+
+.clear-option input[type="radio"] {
+    margin-right: 5px;
+}
+
+.clear-option select {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.clear-option .description {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+    font-style: italic;
+    font-size: 13px;
+}
+
+.clear-logs-stats {
+    background: #fff;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    margin-bottom: 15px;
+}
+
+.clear-logs-stats p {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.clear-logs-stats ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.clear-logs-stats li {
+    margin: 5px 0;
+}
+
+#clear-logs-btn {
+    background: #dc3232 !important;
+    border-color: #dc3232 !important;
+    color: #fff !important;
+}
+
+#clear-logs-btn:hover {
+    background: #c92626 !important;
+    border-color: #c92626 !important;
+}
+
+#clear-logs-btn:disabled {
+    background: #ccc !important;
+    border-color: #ccc !important;
+    color: #666 !important;
+}
+
+#clear-logs-result {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 3px;
+}
+
+#clear-logs-result p {
+    margin: 0;
+    font-weight: bold;
+}
+
 /* Modal styles */
 .modal {
     display: none;

@@ -104,6 +104,73 @@ if ($table_exists && $count > 0) {
     echo "<p style='color: orange;'>⚠️ No logs available for testing</p>";
 }
 
+// Test 7: Curl Payload Logging
+echo "<h2>Test 7: Curl Payload Logging</h2>";
+try {
+    $logger = new WP_MM_Slash_Jira_Logger();
+    
+    // Test the new log_jira_curl method
+    $test_log_id = $logger->log_jira_curl(
+        'POST',
+        'https://test-domain.atlassian.net/rest/api/2/issue',
+        array(
+            'Authorization' => 'Basic ' . base64_encode('test-api-key:'),
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json'
+        ),
+        json_encode(array(
+            'fields' => array(
+                'project' => array('key' => 'TEST'),
+                'summary' => 'Test Issue',
+                'issuetype' => array('name' => 'Task')
+            )
+        )),
+        201,
+        array('Content-Type' => 'application/json'),
+        json_encode(array('key' => 'TEST-123', 'id' => '12345')),
+        0.5,
+        'success',
+        null
+    );
+    
+    if ($test_log_id) {
+        echo "<p style='color: green;'>✅ Curl payload logging test successful</p>";
+        echo "<p>Test log ID: $test_log_id</p>";
+        
+        // Retrieve and display the test log
+        $test_log = $logger->get_log($test_log_id);
+        if ($test_log) {
+            echo "<p style='color: green;'>✅ Test log retrieved successfully</p>";
+            echo "<p>Command: {$test_log->command}</p>";
+            echo "<p>Status: {$test_log->status}</p>";
+            echo "<p>Response Code: {$test_log->response_code}</p>";
+            
+            // Display the curl payload
+            $curl_payload = json_decode($test_log->request_payload, true);
+            if ($curl_payload) {
+                echo "<h3>Curl Payload Details:</h3>";
+                echo "<p><strong>Method:</strong> {$curl_payload['method']}</p>";
+                echo "<p><strong>URL:</strong> {$curl_payload['url']}</p>";
+                echo "<p><strong>Request Headers:</strong></p>";
+                echo "<pre>" . print_r($curl_payload['request']['headers'], true) . "</pre>";
+                echo "<p><strong>Request Body:</strong></p>";
+                echo "<pre>" . htmlspecialchars($curl_payload['request']['body']) . "</pre>";
+                echo "<p><strong>Response Code:</strong> {$curl_payload['response']['code']}</p>";
+                echo "<p><strong>Response Body:</strong></p>";
+                echo "<pre>" . htmlspecialchars($curl_payload['response']['body']) . "</pre>";
+                echo "<p><strong>Execution Time:</strong> {$curl_payload['execution_time']} seconds</p>";
+            }
+        } else {
+            echo "<p style='color: red;'>❌ Failed to retrieve test log</p>";
+        }
+    } else {
+        echo "<p style='color: red;'>❌ Curl payload logging test failed</p>";
+    }
+    
+} catch (Exception $e) {
+    echo "<p style='color: red;'>❌ Curl payload logging error: " . $e->getMessage() . "</p>";
+}
+
 echo "<h2>Recommendations</h2>";
 if (!$table_exists) {
     echo "<p style='color: red;'>⚠️ Create the logs table by deactivating and reactivating the plugin</p>";

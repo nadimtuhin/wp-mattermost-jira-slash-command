@@ -9,6 +9,7 @@ class WP_MM_Slash_Jira_Admin {
         add_action('admin_init', array($this, 'register_settings'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_admin_scripts'));
         add_action('wp_ajax_create_mm_jira_tables', array($this, 'ajax_create_tables'));
+        add_action('wp_ajax_clear_mm_jira_logs', array($this, 'ajax_clear_logs'));
     }
     
     public function add_admin_menu() {
@@ -262,6 +263,66 @@ class WP_MM_Slash_Jira_Admin {
                     </form>
                 </div>
                 
+                <div class="logs-actions">
+                    <h3>Log Management</h3>
+                    <div class="clear-logs-section">
+                        <p>Clear logs to free up database space and improve performance:</p>
+                        
+                        <div class="clear-logs-options">
+                            <div class="clear-option">
+                                <label>
+                                    <input type="radio" name="clear_type" value="all" checked> 
+                                    Clear all logs
+                                </label>
+                                <span class="description">Removes all log entries from the database</span>
+                            </div>
+                            
+                            <div class="clear-option">
+                                <label>
+                                    <input type="radio" name="clear_type" value="old"> 
+                                    Clear logs older than
+                                </label>
+                                <select id="clear_days" disabled>
+                                    <option value="7">7 days</option>
+                                    <option value="14">14 days</option>
+                                    <option value="30" selected>30 days</option>
+                                    <option value="60">60 days</option>
+                                    <option value="90">90 days</option>
+                                    <option value="180">180 days</option>
+                                </select>
+                                <span class="description">Removes logs older than the specified number of days</span>
+                            </div>
+                        </div>
+                        
+                        <div class="clear-logs-stats">
+                            <?php
+                            global $wpdb;
+                            $table_name = $wpdb->prefix . 'mm_jira_logs';
+                            $total_logs = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+                            $old_logs_30 = $wpdb->get_var($wpdb->prepare(
+                                "SELECT COUNT(*) FROM $table_name WHERE timestamp < %s",
+                                date('Y-m-d H:i:s', strtotime('-30 days'))
+                            ));
+                            $old_logs_7 = $wpdb->get_var($wpdb->prepare(
+                                "SELECT COUNT(*) FROM $table_name WHERE timestamp < %s",
+                                date('Y-m-d H:i:s', strtotime('-7 days'))
+                            ));
+                            ?>
+                            <p><strong>Current statistics:</strong></p>
+                            <ul>
+                                <li>Total logs: <strong><?php echo number_format($total_logs); ?></strong></li>
+                                <li>Logs older than 7 days: <strong><?php echo number_format($old_logs_7); ?></strong></li>
+                                <li>Logs older than 30 days: <strong><?php echo number_format($old_logs_30); ?></strong></li>
+                            </ul>
+                        </div>
+                        
+                        <button type="button" id="clear-logs-btn" class="button button-secondary">
+                            🗑️ Clear Logs
+                        </button>
+                        <div id="clear-logs-result"></div>
+                    </div>
+                </div>
+                
                 <div class="logs-table-container">
                     <?php if (empty($logs_data['logs'])): ?>
                         <p>No logs found. <?php if (!$logger->is_logging_enabled()): ?>Enable logging in Settings to start capturing logs.<?php endif; ?></p>
@@ -270,6 +331,7 @@ class WP_MM_Slash_Jira_Admin {
                             <thead>
                                 <tr>
                                     <th>Timestamp</th>
+                                    <th>Type</th>
                                     <th>Channel</th>
                                     <th>User</th>
                                     <th>Command</th>
@@ -280,8 +342,27 @@ class WP_MM_Slash_Jira_Admin {
                             </thead>
                             <tbody>
                                 <?php foreach ($logs_data['logs'] as $log): ?>
-                                    <tr>
+                                    <?php 
+                                    // Check if this is a curl payload log
+                                    $is_curl_log = false;
+                                    $log_type = 'Webhook';
+                                    try {
+                                        $curl_payload = json_decode($log->request_payload, true);
+                                        if ($curl_payload && isset($curl_payload['method']) && isset($curl_payload['url'])) {
+                                            $is_curl_log = true;
+                                            $log_type = 'Jira API';
+                                        }
+                                    } catch (Exception $e) {
+                                        // Not a curl payload
+                                    }
+                                    ?>
+                                    <tr class="<?php echo $is_curl_log ? 'curl-log' : ''; ?>">
                                         <td><?php echo esc_html(date('Y-m-d H:i:s', strtotime($log->timestamp))); ?></td>
+                                        <td>
+                                            <span class="log-type-<?php echo strtolower(str_replace(' ', '-', $log_type)); ?>">
+                                                <?php echo esc_html($log_type); ?>
+                                            </span>
+                                        </td>
                                         <td><?php echo esc_html($log->channel_name); ?></td>
                                         <td><?php echo esc_html($log->user_name); ?></td>
                                         <td><?php echo esc_html($log->command); ?></td>
@@ -575,7 +656,7 @@ class WP_MM_Slash_Jira_Admin {
      * AJAX handler for creating tables
      */
     public function ajax_create_tables() {
-        // Check nonce
+        // Verify nonce
         if (!wp_verify_nonce($_POST['nonce'], 'wp_mm_slash_jira_nonce')) {
             wp_die('Security check failed');
         }
@@ -588,5 +669,53 @@ class WP_MM_Slash_Jira_Admin {
         $result = $this->create_tables();
         
         wp_send_json($result);
+    }
+    
+    /**
+     * AJAX handler for clearing logs
+     */
+    public function ajax_clear_logs() {
+        // Verify nonce
+        if (!wp_verify_nonce($_POST['nonce'], 'wp_mm_slash_jira_nonce')) {
+            wp_die('Security check failed');
+        }
+        
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_die('Insufficient permissions');
+        }
+        
+        $clear_type = sanitize_text_field($_POST['clear_type']);
+        $days = isset($_POST['days']) ? intval($_POST['days']) : 30;
+        
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'mm_jira_logs';
+        
+        // Get count before clearing
+        $count_before = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+        
+        if ($clear_type === 'all') {
+            // Clear all logs
+            $result = $wpdb->query("DELETE FROM $table_name");
+            $message = "All logs cleared successfully. Removed $count_before log entries.";
+        } else {
+            // Clear old logs
+            $cutoff_date = date('Y-m-d H:i:s', strtotime("-{$days} days"));
+            $result = $wpdb->query($wpdb->prepare("DELETE FROM $table_name WHERE timestamp < %s", $cutoff_date));
+            $count_after = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
+            $removed_count = $count_before - $count_after;
+            $message = "Logs older than $days days cleared successfully. Removed $removed_count log entries.";
+        }
+        
+        if ($result === false) {
+            wp_send_json_error(array(
+                'message' => 'Failed to clear logs. Database error: ' . $wpdb->last_error
+            ));
+        } else {
+            wp_send_json_success(array(
+                'message' => $message,
+                'cleared_count' => $result
+            ));
+        }
     }
 } 

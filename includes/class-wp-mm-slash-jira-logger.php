@@ -169,4 +169,50 @@ class WP_MM_Slash_Jira_Logger {
         
         return $payload;
     }
+    
+    /**
+     * Log a Jira API curl request and response
+     */
+    public function log_jira_curl($method, $url, $request_headers, $request_body, $response_code, $response_headers, $response_body, $execution_time = null, $status = 'success', $error_message = null) {
+        if (!$this->is_logging_enabled()) {
+            return;
+        }
+        
+        global $wpdb;
+        
+        // Create a structured payload for logging
+        $curl_payload = array(
+            'method' => $method,
+            'url' => $url,
+            'request' => array(
+                'headers' => $request_headers,
+                'body' => $request_body
+            ),
+            'response' => array(
+                'code' => $response_code,
+                'headers' => $response_headers,
+                'body' => $response_body
+            ),
+            'execution_time' => $execution_time,
+            'status' => $status,
+            'error_message' => $error_message
+        );
+        
+        $data = array(
+            'channel_id' => 'jira-api',
+            'channel_name' => 'Jira API',
+            'user_name' => 'system',
+            'command' => "Jira {$method} Request",
+            'request_payload' => json_encode($curl_payload, JSON_PRETTY_PRINT),
+            'response_payload' => null,
+            'response_code' => $response_code,
+            'execution_time' => $execution_time,
+            'status' => $status,
+            'error_message' => $error_message
+        );
+        
+        $wpdb->insert($this->table_name, $data);
+        
+        return $wpdb->insert_id;
+    }
 } 

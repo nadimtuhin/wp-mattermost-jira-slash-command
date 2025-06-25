@@ -269,11 +269,56 @@ jQuery(document).ready(function($) {
         }
         html += '</table>';
         
-        html += '<h4>Request Payload</h4>';
-        html += '<pre class="payload-display">' + (log.request_payload_formatted || log.request_payload) + '</pre>';
+        // Check if this is a curl payload log
+        var curlPayload = null;
+        try {
+            curlPayload = JSON.parse(log.request_payload);
+        } catch (e) {
+            // Not a curl payload, continue with normal display
+        }
         
-        html += '<h4>Response Payload</h4>';
-        html += '<pre class="payload-display">' + (log.response_payload_formatted || log.response_payload || 'No response') + '</pre>';
+        if (curlPayload && curlPayload.method && curlPayload.url) {
+            // This is a curl payload log
+            html += '<h4>Jira API Request (Curl)</h4>';
+            html += '<table class="form-table">';
+            html += '<tr><th>Method:</th><td>' + curlPayload.method + '</td></tr>';
+            html += '<tr><th>URL:</th><td><code>' + curlPayload.url + '</code></td></tr>';
+            html += '<tr><th>Execution Time:</th><td>' + (curlPayload.execution_time * 1000).toFixed(2) + ' ms</td></tr>';
+            if (curlPayload.error_message) {
+                html += '<tr><th>Error:</th><td>' + curlPayload.error_message + '</td></tr>';
+            }
+            html += '</table>';
+            
+            html += '<h4>Request Headers</h4>';
+            html += '<pre class="payload-display">' + JSON.stringify(curlPayload.request.headers, null, 2) + '</pre>';
+            
+            if (curlPayload.request.body) {
+                html += '<h4>Request Body</h4>';
+                html += '<pre class="payload-display">' + curlPayload.request.body + '</pre>';
+            }
+            
+            html += '<h4>Response Information</h4>';
+            html += '<table class="form-table">';
+            html += '<tr><th>Response Code:</th><td>' + curlPayload.response.code + '</td></tr>';
+            html += '</table>';
+            
+            if (curlPayload.response.headers && Object.keys(curlPayload.response.headers).length > 0) {
+                html += '<h4>Response Headers</h4>';
+                html += '<pre class="payload-display">' + JSON.stringify(curlPayload.response.headers, null, 2) + '</pre>';
+            }
+            
+            if (curlPayload.response.body) {
+                html += '<h4>Response Body</h4>';
+                html += '<pre class="payload-display">' + curlPayload.response.body + '</pre>';
+            }
+        } else {
+            // Regular webhook log
+            html += '<h4>Request Payload</h4>';
+            html += '<pre class="payload-display">' + (log.request_payload_formatted || log.request_payload) + '</pre>';
+            
+            html += '<h4>Response Payload</h4>';
+            html += '<pre class="payload-display">' + (log.response_payload_formatted || log.response_payload || 'No response') + '</pre>';
+        }
         
         html += '</div>';
         
@@ -313,6 +358,67 @@ jQuery(document).ready(function($) {
             },
             complete: function() {
                 button.prop('disabled', false).text('Create Database Tables');
+            }
+        });
+    });
+    
+    // Clear logs radio button interactions
+    $('input[name="clear_type"]').change(function() {
+        if ($(this).val() === 'old') {
+            $('#clear_days').prop('disabled', false);
+        } else {
+            $('#clear_days').prop('disabled', true);
+        }
+    });
+    
+    // Clear logs button
+    $('#clear-logs-btn').click(function() {
+        var button = $(this);
+        var resultDiv = $('#clear-logs-result');
+        var clearType = $('input[name="clear_type"]:checked').val();
+        var days = $('#clear_days').val();
+        
+        // Show confirmation dialog
+        var confirmMessage = clearType === 'all' 
+            ? 'Are you sure you want to clear ALL logs? This action cannot be undone.'
+            : 'Are you sure you want to clear logs older than ' + days + ' days? This action cannot be undone.';
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+        
+        button.prop('disabled', true).text('Clearing logs...');
+        resultDiv.html('');
+        
+        $.ajax({
+            url: wp_mm_slash_jira.ajax_url,
+            method: 'POST',
+            data: {
+                action: 'clear_mm_jira_logs',
+                nonce: wp_mm_slash_jira.ajax_nonce,
+                clear_type: clearType,
+                days: days
+            },
+            success: function(data) {
+                if (data.success) {
+                    resultDiv.html('<p style="color: green;">✅ ' + data.data.message + '</p>');
+                    // Refresh the page after a short delay to show updated statistics
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    resultDiv.html('<p style="color: red;">❌ ' + data.data.message + '</p>');
+                }
+            },
+            error: function(xhr, status, error) {
+                var errorMessage = 'Error clearing logs: ' + error;
+                if (xhr.responseJSON && xhr.responseJSON.data && xhr.responseJSON.data.message) {
+                    errorMessage = xhr.responseJSON.data.message;
+                }
+                resultDiv.html('<p style="color: red;">❌ ' + errorMessage + '</p>');
+            },
+            complete: function() {
+                button.prop('disabled', false).text('🗑️ Clear Logs');
             }
         });
     });

@@ -262,22 +262,64 @@ class WP_MM_Slash_Jira_API {
         );
         
         $url = "https://{$jira_domain}/rest/api/2/issue/{$issue_key}/assignee";
+        $request_headers = array(
+            'Authorization' => 'Basic ' . base64_encode($api_key . ':'),
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json'
+        );
+        $request_body = json_encode($data);
+        
+        $start_time = microtime(true);
         
         $response = wp_remote_put($url, array(
-            'headers' => array(
-                'Authorization' => 'Basic ' . base64_encode($api_key . ':'),
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json'
-            ),
-            'body' => json_encode($data),
+            'headers' => $request_headers,
+            'body' => $request_body,
             'timeout' => 30
         ));
         
+        $execution_time = microtime(true) - $start_time;
+        
         if (is_wp_error($response)) {
-            return array('success' => false, 'error' => $response->get_error_message());
+            $error_message = $response->get_error_message();
+            $this->logger->log_jira_curl(
+                'PUT',
+                $url,
+                $request_headers,
+                $request_body,
+                0,
+                array(),
+                '',
+                $execution_time,
+                'error',
+                $error_message
+            );
+            return array('success' => false, 'error' => $error_message);
         }
         
         $response_code = wp_remote_retrieve_response_code($response);
+        $response_headers = wp_remote_retrieve_headers($response);
+        $response_body = wp_remote_retrieve_body($response);
+        
+        // Log the curl payload
+        $status = ($response_code === 204) ? 'success' : 'error';
+        $error_message = null;
+        if ($status === 'error') {
+            $result = json_decode($response_body, true);
+            $error_message = isset($result['errorMessages']) ? implode(', ', $result['errorMessages']) : 'Unknown error';
+        }
+        
+        $this->logger->log_jira_curl(
+            'PUT',
+            $url,
+            $request_headers,
+            $request_body,
+            $response_code,
+            $response_headers,
+            $response_body,
+            $execution_time,
+            $status,
+            $error_message
+        );
         
         if ($response_code === 204) {
             return array(
@@ -285,10 +327,7 @@ class WP_MM_Slash_Jira_API {
                 'url' => "https://{$jira_domain}/browse/{$issue_key}"
             );
         } else {
-            $body = wp_remote_retrieve_body($response);
-            $result = json_decode($body, true);
-            $error = isset($result['errorMessages']) ? implode(', ', $result['errorMessages']) : 'Unknown error';
-            return array('success' => false, 'error' => $error);
+            return array('success' => false, 'error' => $error_message);
         }
     }
     
@@ -307,23 +346,62 @@ class WP_MM_Slash_Jira_API {
         }
         
         $url = "https://{$jira_domain}/rest/api/2/user/search?query=" . urlencode($email);
+        $request_headers = array(
+            'Authorization' => 'Basic ' . base64_encode($api_key . ':'),
+            'Accept' => 'application/json'
+        );
+        
+        $start_time = microtime(true);
         
         $response = wp_remote_get($url, array(
-            'headers' => array(
-                'Authorization' => 'Basic ' . base64_encode($api_key . ':'),
-                'Accept' => 'application/json'
-            ),
+            'headers' => $request_headers,
             'timeout' => 30
         ));
         
+        $execution_time = microtime(true) - $start_time;
+        
         if (is_wp_error($response)) {
+            $this->logger->log_jira_curl(
+                'GET',
+                $url,
+                $request_headers,
+                '',
+                0,
+                array(),
+                '',
+                $execution_time,
+                'error',
+                $response->get_error_message()
+            );
             return false;
         }
         
-        $body = wp_remote_retrieve_body($response);
-        $result = json_decode($body, true);
+        $response_code = wp_remote_retrieve_response_code($response);
+        $response_headers = wp_remote_retrieve_headers($response);
+        $response_body = wp_remote_retrieve_body($response);
+        $result = json_decode($response_body, true);
         
-        if (wp_remote_retrieve_response_code($response) === 200 && is_array($result) && !empty($result)) {
+        // Log the curl payload
+        $status = ($response_code === 200 && is_array($result) && !empty($result)) ? 'success' : 'error';
+        $error_message = null;
+        if ($status === 'error') {
+            $error_message = 'User not found or API error';
+        }
+        
+        $this->logger->log_jira_curl(
+            'GET',
+            $url,
+            $request_headers,
+            '',
+            $response_code,
+            $response_headers,
+            $response_body,
+            $execution_time,
+            $status,
+            $error_message
+        );
+        
+        if ($response_code === 200 && is_array($result) && !empty($result)) {
             // Find the user with matching email
             foreach ($result as $user) {
                 if (isset($user['emailAddress']) && strtolower($user['emailAddress']) === strtolower($email)) {
@@ -667,33 +745,73 @@ class WP_MM_Slash_Jira_API {
         );
         
         $url = "https://{$jira_domain}/rest/api/2/issue";
+        $request_headers = array(
+            'Authorization' => 'Basic ' . base64_encode($api_key . ':'),
+            'Content-Type' => 'application/json',
+            'Accept' => 'application/json'
+        );
+        $request_body = json_encode($data);
+        
+        $start_time = microtime(true);
         
         $response = wp_remote_post($url, array(
-            'headers' => array(
-                'Authorization' => 'Basic ' . base64_encode($api_key . ':'),
-                'Content-Type' => 'application/json',
-                'Accept' => 'application/json'
-            ),
-            'body' => json_encode($data),
+            'headers' => $request_headers,
+            'body' => $request_body,
             'timeout' => 30
         ));
         
+        $execution_time = microtime(true) - $start_time;
+        
         if (is_wp_error($response)) {
-            return array('success' => false, 'error' => $response->get_error_message());
+            $error_message = $response->get_error_message();
+            $this->logger->log_jira_curl(
+                'POST',
+                $url,
+                $request_headers,
+                $request_body,
+                0,
+                array(),
+                '',
+                $execution_time,
+                'error',
+                $error_message
+            );
+            return array('success' => false, 'error' => $error_message);
         }
         
-        $body = wp_remote_retrieve_body($response);
-        $result = json_decode($body, true);
+        $response_code = wp_remote_retrieve_response_code($response);
+        $response_headers = wp_remote_retrieve_headers($response);
+        $response_body = wp_remote_retrieve_body($response);
+        $result = json_decode($response_body, true);
         
-        if (wp_remote_retrieve_response_code($response) === 201 && isset($result['key'])) {
+        // Log the curl payload
+        $status = ($response_code === 201 && isset($result['key'])) ? 'success' : 'error';
+        $error_message = null;
+        if ($status === 'error') {
+            $error_message = isset($result['errorMessages']) ? implode(', ', $result['errorMessages']) : 'Unknown error';
+        }
+        
+        $this->logger->log_jira_curl(
+            'POST',
+            $url,
+            $request_headers,
+            $request_body,
+            $response_code,
+            $response_headers,
+            $response_body,
+            $execution_time,
+            $status,
+            $error_message
+        );
+        
+        if ($response_code === 201 && isset($result['key'])) {
             return array(
                 'success' => true,
                 'issue_key' => $result['key'],
                 'url' => "https://{$jira_domain}/browse/{$result['key']}"
             );
         } else {
-            $error = isset($result['errorMessages']) ? implode(', ', $result['errorMessages']) : 'Unknown error';
-            return array('success' => false, 'error' => $error);
+            return array('success' => false, 'error' => $error_message);
         }
     }
     
