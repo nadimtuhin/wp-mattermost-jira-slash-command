@@ -1848,7 +1848,6 @@ class WP_MM_Slash_Jira_API {
         if (empty($email_domain) || empty($username)) {
             return null;
         }
-        
         $email = $username . '@' . $email_domain;
         return $this->find_user_by_email($email);
     }
@@ -1909,7 +1908,12 @@ class WP_MM_Slash_Jira_API {
                 return $user;
             }
         }
-        
+
+        // If no exact match, return the first user
+        if (count($users) > 0) {
+            return $users[0];
+        }
+
         return null;
     }
 }
