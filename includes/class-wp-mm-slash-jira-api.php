@@ -2,9 +2,101 @@
 /**
  * API handler class for Jira integration
  */
+
+// Ensure WordPress is loaded
+if (!function_exists('wp_remote_put')) {
+    // If WordPress HTTP API is not available, try to load it
+    if (function_exists('require_once')) {
+        // Try to load WordPress HTTP API functions
+        if (file_exists(ABSPATH . 'wp-includes/http.php')) {
+            require_once(ABSPATH . 'wp-includes/http.php');
+        }
+    }
+}
+
 class WP_MM_Slash_Jira_API {
     
     private $logger;
+    
+    /**
+     * Helper method to make HTTP requests with fallback to cURL
+     */
+    private function make_http_request($url, $args = array()) {
+        // Try WordPress HTTP API first
+        if (function_exists('wp_remote_request')) {
+            return wp_remote_request($url, $args);
+        }
+        
+        // Fallback to cURL
+        return $this->curl_request($url, $args);
+    }
+    
+    /**
+     * Fallback cURL implementation
+     */
+    private function curl_request($url, $args = array()) {
+        if (!function_exists('curl_init')) {
+            return new WP_Error('curl_not_available', 'cURL is not available');
+        }
+        
+        $method = isset($args['method']) ? strtoupper($args['method']) : 'GET';
+        $headers = isset($args['headers']) ? $args['headers'] : array();
+        $body = isset($args['body']) ? $args['body'] : '';
+        $timeout = isset($args['timeout']) ? $args['timeout'] : 30;
+        
+        $ch = curl_init();
+        
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        
+        // Set method
+        if ($method === 'POST') {
+            curl_setopt($ch, CURLOPT_POST, true);
+        } elseif ($method === 'PUT') {
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
+        } elseif ($method === 'DELETE') {
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+        }
+        
+        // Set headers
+        if (!empty($headers)) {
+            $header_lines = array();
+            foreach ($headers as $key => $value) {
+                $header_lines[] = "$key: $value";
+            }
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $header_lines);
+        }
+        
+        // Set body
+        if (!empty($body)) {
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $body);
+        }
+        
+        $response_body = curl_exec($ch);
+        $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+        
+        if ($error) {
+            return new WP_Error('curl_error', $error);
+        }
+        
+        // Create a response object similar to wp_remote_request
+        $response = array(
+            'body' => $response_body,
+            'response' => array(
+                'code' => $response_code,
+                'message' => 'OK'
+            ),
+            'headers' => array()
+        );
+        
+        return $response;
+    }
     
     /**
      * Get authentication header for Jira API calls
@@ -118,6 +210,9 @@ class WP_MM_Slash_Jira_API {
                     break;
                 case 'projects':
                     $response = $this->list_jira_projects($channel_id, $channel_name, $text, $user_name);
+                    break;
+                case 'find':
+                    $response = $this->find_jira_user($channel_id, $channel_name, $text, $user_name);
                     break;
                 case 'help':
                     $response = $this->show_help();
@@ -236,6 +331,11 @@ class WP_MM_Slash_Jira_API {
             
             if (!empty($issue_type)) {
                 $response_text .= "\n**Type:** {$issue_type}";
+            }
+            
+            // Add reporter information if it was automatically set
+            if (isset($result['reporter_set']) && $result['reporter_set']) {
+                $response_text .= "\n**Reporter:** {$result['reporter_name']} ({$result['reporter_email']})";
             }
             
             $response_text .= "\n\n[View in Jira]({$result['url']})";
@@ -461,7 +561,8 @@ class WP_MM_Slash_Jira_API {
         
         $start_time = microtime(true);
         
-        $response = wp_remote_put($url, array(
+        $response = $this->make_http_request($url, array(
+            'method' => 'PUT',
             'headers' => $request_headers,
             'body' => $request_body,
             'timeout' => 30
@@ -486,9 +587,9 @@ class WP_MM_Slash_Jira_API {
             return array('success' => false, 'error' => $error_message);
         }
         
-        $response_code = wp_remote_retrieve_response_code($response);
-        $response_headers = wp_remote_retrieve_headers($response);
-        $response_body = wp_remote_retrieve_body($response);
+        $response_code = isset($response['response']['code']) ? $response['response']['code'] : 0;
+        $response_headers = isset($response['headers']) ? $response['headers'] : array();
+        $response_body = isset($response['body']) ? $response['body'] : '';
         
         // Log the curl payload
         $status = ($response_code === 204) ? 'success' : 'error';
@@ -548,7 +649,8 @@ class WP_MM_Slash_Jira_API {
         
         $start_time = microtime(true);
         
-        $response = wp_remote_get($url, array(
+        $response = $this->make_http_request($url, array(
+            'method' => 'GET',
             'headers' => $request_headers,
             'timeout' => 30
         ));
@@ -571,9 +673,9 @@ class WP_MM_Slash_Jira_API {
             return false;
         }
         
-        $response_code = wp_remote_retrieve_response_code($response);
-        $response_headers = wp_remote_retrieve_headers($response);
-        $response_body = wp_remote_retrieve_body($response);
+        $response_code = isset($response['response']['code']) ? $response['response']['code'] : 0;
+        $response_headers = isset($response['headers']) ? $response['headers'] : array();
+        $response_body = isset($response['body']) ? $response['body'] : '';
         $result = json_decode($response_body, true);
         
         // Log the curl payload
@@ -939,7 +1041,8 @@ class WP_MM_Slash_Jira_API {
         
         $start_time = microtime(true);
         
-        $response = wp_remote_get($url, array(
+        $response = $this->make_http_request($url, array(
+            'method' => 'GET',
             'headers' => $request_headers,
             'timeout' => 30
         ));
@@ -966,9 +1069,9 @@ class WP_MM_Slash_Jira_API {
             );
         }
         
-        $response_code = wp_remote_retrieve_response_code($response);
-        $response_headers = wp_remote_retrieve_headers($response);
-        $response_body = wp_remote_retrieve_body($response);
+        $response_code = isset($response['response']['code']) ? $response['response']['code'] : 0;
+        $response_headers = isset($response['headers']) ? $response['headers'] : array();
+        $response_body = isset($response['body']) ? $response['body'] : '';
         $projects = json_decode($response_body, true);
         
         // Log the curl payload
@@ -1049,6 +1152,206 @@ class WP_MM_Slash_Jira_API {
     }
     
     /**
+     * Find Jira user by email
+     */
+    private function find_jira_user($channel_id, $channel_name, $text, $user_name) {
+        $jira_domain = get_option('wp_mm_slash_jira_jira_domain');
+        
+        if (empty($jira_domain)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Jira domain not configured. Please contact an administrator."
+            );
+        }
+        
+        // Clean and validate the Jira domain
+        $jira_domain = $this->clean_jira_domain($jira_domain);
+        
+        if (empty($jira_domain)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Invalid Jira domain format. Please use format: your-domain.atlassian.net"
+            );
+        }
+        
+        // Parse the email from the command
+        $parts = explode(' ', trim($text));
+        if (count($parts) < 2) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Please provide an email address to search for. Usage: `/jira find user@example.com`\n\n**Examples:**\n• `/jira find developer@company.com`\n• `/jira find john.doe@example.com`"
+            );
+        }
+        
+        $email = trim($parts[1]);
+        
+        // Validate email format
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Invalid email format. Please provide a valid email address.\n\n**Example:** `/jira find user@example.com`"
+            );
+        }
+        
+        $url = "https://{$jira_domain}/rest/api/2/user/search?query=" . urlencode($email);
+        $auth_header = $this->get_auth_header();
+        if (!$auth_header) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Jira API credentials not configured. Please contact an administrator."
+            );
+        }
+        
+        $request_headers = array(
+            'Authorization' => $auth_header,
+            'Accept' => 'application/json'
+        );
+        
+        $start_time = microtime(true);
+        
+        $response = $this->make_http_request($url, array(
+            'method' => 'GET',
+            'headers' => $request_headers,
+            'timeout' => 30
+        ));
+        
+        $execution_time = microtime(true) - $start_time;
+        
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            $this->logger->log_jira_curl(
+                'GET',
+                $url,
+                $request_headers,
+                '',
+                0,
+                array(),
+                '',
+                $execution_time,
+                'error',
+                $error_message
+            );
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Error searching for user: " . $error_message
+            );
+        }
+        
+        $response_code = isset($response['response']['code']) ? $response['response']['code'] : 0;
+        $response_headers = isset($response['headers']) ? $response['headers'] : array();
+        $response_body = isset($response['body']) ? $response['body'] : '';
+        $users = json_decode($response_body, true);
+        
+        // Log the curl payload
+        $status = ($response_code === 200 && is_array($users)) ? 'success' : 'error';
+        $error_message = null;
+        if ($status === 'error') {
+            $error_message = isset($users['errorMessages']) ? implode(', ', $users['errorMessages']) : 'Unknown error';
+        }
+        
+        $this->logger->log_jira_curl(
+            'GET',
+            $url,
+            $request_headers,
+            '',
+            $response_code,
+            $response_headers,
+            $response_body,
+            $execution_time,
+            $status,
+            $error_message
+        );
+        
+        if ($response_code !== 200 || !is_array($users)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Error searching for user: " . $error_message
+            );
+        }
+        
+        // Filter users by exact email match
+        $exact_matches = array();
+        $partial_matches = array();
+        
+        foreach ($users as $user) {
+            if (isset($user['emailAddress']) && strtolower($user['emailAddress']) === strtolower($email)) {
+                $exact_matches[] = $user;
+            } elseif (isset($user['emailAddress']) && stripos($user['emailAddress'], $email) !== false) {
+                $partial_matches[] = $user;
+            } elseif (isset($user['displayName']) && stripos($user['displayName'], $email) !== false) {
+                $partial_matches[] = $user;
+            }
+        }
+        
+        $user_text = "🔍 **User Search Results for: {$email}**\n\n";
+        
+        if (empty($exact_matches) && empty($partial_matches)) {
+            $user_text .= "❌ **No users found** with the email address `{$email}`\n\n";
+            $user_text .= "**Possible reasons:**\n";
+            $user_text .= "• User doesn't exist in Jira\n";
+            $user_text .= "• User email is different\n";
+            $user_text .= "• User account is inactive\n";
+            $user_text .= "• Insufficient permissions to view user\n\n";
+            $user_text .= "**Try:**\n";
+            $user_text .= "• Check the email spelling\n";
+            $user_text .= "• Use a partial email search\n";
+            $user_text .= "• Contact your Jira administrator\n";
+        } else {
+            // Show exact matches first
+            if (!empty($exact_matches)) {
+                $user_text .= "✅ **Exact Email Matches:**\n";
+                foreach ($exact_matches as $user) {
+                    $user_text .= $this->format_user_info($user, $jira_domain);
+                }
+                $user_text .= "\n";
+            }
+            
+            // Show partial matches
+            if (!empty($partial_matches)) {
+                $user_text .= "🔍 **Partial Matches:**\n";
+                foreach ($partial_matches as $user) {
+                    $user_text .= $this->format_user_info($user, $jira_domain);
+                }
+                $user_text .= "\n";
+            }
+            
+            $user_text .= "**To assign issues to a user:**\n";
+            $user_text .= "• `/jira assign PROJ-123 {$email}` - Assign issue to user\n\n";
+            $user_text .= "**Other Commands:**\n";
+            $user_text .= "• `/jira view PROJ-123` - View issue details\n";
+            $user_text .= "• `/jira create Title` - Create new issue\n";
+            $user_text .= "• `/jira help` - Show all commands\n";
+        }
+        
+        return array(
+            'response_type' => 'in_channel',
+            'text' => $user_text
+        );
+    }
+    
+    /**
+     * Format user information for display
+     */
+    private function format_user_info($user, $jira_domain) {
+        $display_name = isset($user['displayName']) ? $user['displayName'] : 'Unknown';
+        $email = isset($user['emailAddress']) ? $user['emailAddress'] : 'No email';
+        $account_id = isset($user['accountId']) ? $user['accountId'] : 'No account ID';
+        $active = isset($user['active']) ? ($user['active'] ? 'Active' : 'Inactive') : 'Unknown';
+        $timezone = isset($user['timeZone']) ? $user['timeZone'] : 'Unknown';
+        
+        $user_url = "https://{$jira_domain}/secure/ViewProfile.jspa?name=" . urlencode($account_id);
+        
+        $formatted = "• **{$display_name}**\n";
+        $formatted .= "  📧 Email: `{$email}`\n";
+        $formatted .= "  🆔 Account ID: `{$account_id}`\n";
+        $formatted .= "  📊 Status: {$active}\n";
+        $formatted .= "  🌍 Timezone: {$timezone}\n";
+        $formatted .= "  🔗 [View Profile]({$user_url})\n\n";
+        
+        return $formatted;
+    }
+    
+    /**
      * Create issue in Jira via API
      */
     private function create_issue_in_jira($project_key, $title, $user_name, $channel_name, $issue_type = null) {
@@ -1089,6 +1392,17 @@ class WP_MM_Slash_Jira_API {
             )
         );
         
+        // Try to automatically set reporter if email domain is configured
+        $email_domain = get_option('wp_mm_slash_jira_email_domain');
+        if (!empty($email_domain)) {
+            $reporter_user = $this->find_user_by_username_and_domain($user_name, $email_domain);
+            if ($reporter_user && isset($reporter_user['accountId'])) {
+                $data['fields']['reporter'] = array(
+                    'accountId' => $reporter_user['accountId']
+                );
+            }
+        }
+        
         $url = "https://{$jira_domain}/rest/api/2/issue";
         $auth_header = $this->get_auth_header();
         if (!$auth_header) {
@@ -1104,7 +1418,8 @@ class WP_MM_Slash_Jira_API {
         
         $start_time = microtime(true);
         
-        $response = wp_remote_post($url, array(
+        $response = $this->make_http_request($url, array(
+            'method' => 'POST',
             'headers' => $request_headers,
             'body' => $request_body,
             'timeout' => 30
@@ -1129,9 +1444,9 @@ class WP_MM_Slash_Jira_API {
             return array('success' => false, 'error' => $error_message);
         }
         
-        $response_code = wp_remote_retrieve_response_code($response);
-        $response_headers = wp_remote_retrieve_headers($response);
-        $response_body = wp_remote_retrieve_body($response);
+        $response_code = isset($response['response']['code']) ? $response['response']['code'] : 0;
+        $response_headers = isset($response['headers']) ? $response['headers'] : array();
+        $response_body = isset($response['body']) ? $response['body'] : '';
         $result = json_decode($response_body, true);
         
         // Log the curl payload
@@ -1155,11 +1470,20 @@ class WP_MM_Slash_Jira_API {
         );
         
         if ($response_code === 201 && isset($result['key'])) {
-            return array(
+            $response_data = array(
                 'success' => true,
                 'issue_key' => $result['key'],
                 'url' => "https://{$jira_domain}/browse/{$result['key']}"
             );
+            
+            // Add reporter information if it was set
+            if (!empty($email_domain) && isset($reporter_user)) {
+                $response_data['reporter_set'] = true;
+                $response_data['reporter_email'] = $reporter_user['emailAddress'];
+                $response_data['reporter_name'] = $reporter_user['displayName'];
+            }
+            
+            return $response_data;
         } else {
             return array('success' => false, 'error' => $error_message);
         }
@@ -1196,7 +1520,8 @@ class WP_MM_Slash_Jira_API {
         
         $start_time = microtime(true);
         
-        $response = wp_remote_get($url, array(
+        $response = $this->make_http_request($url, array(
+            'method' => 'GET',
             'headers' => $request_headers,
             'timeout' => 30
         ));
@@ -1220,9 +1545,9 @@ class WP_MM_Slash_Jira_API {
             return array('success' => false, 'error' => $error_message);
         }
         
-        $response_code = wp_remote_retrieve_response_code($response);
-        $response_headers = wp_remote_retrieve_headers($response);
-        $response_body = wp_remote_retrieve_body($response);
+        $response_code = isset($response['response']['code']) ? $response['response']['code'] : 0;
+        $response_headers = isset($response['headers']) ? $response['headers'] : array();
+        $response_body = isset($response['body']) ? $response['body'] : '';
         $result = json_decode($response_body, true);
         
         // Log the curl payload
@@ -1360,6 +1685,8 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira view PROJ-123` - View detailed information about an issue\n\n" .
                      "**Assign an issue:**\n" .
                      "• `/jira assign PROJ-123 user@example.com` - Assigns issue to user by email\n\n" .
+                     "**Find a user:**\n" .
+                     "• `/jira find user@example.com` - Search for a user by email address\n\n" .
                      "**Bind channel to project:**\n" .
                      "• `/jira bind PROJECT-KEY` - Binds current channel to Jira project\n\n" .
                      "**Check channel status:**\n" .
@@ -1512,5 +1839,77 @@ class WP_MM_Slash_Jira_API {
         $log->response_payload_formatted = $this->logger->format_payload($log->response_payload);
         
         return new WP_REST_Response($log, 200);
+    }
+    
+    /**
+     * Find Jira user by username and email domain
+     */
+    private function find_user_by_username_and_domain($username, $email_domain) {
+        if (empty($email_domain) || empty($username)) {
+            return null;
+        }
+        
+        $email = $username . '@' . $email_domain;
+        return $this->find_user_by_email($email);
+    }
+    
+    /**
+     * Find Jira user by email (internal method)
+     */
+    private function find_user_by_email($email) {
+        $jira_domain = get_option('wp_mm_slash_jira_jira_domain');
+        
+        if (empty($jira_domain)) {
+            return null;
+        }
+        
+        // Clean and validate the Jira domain
+        $jira_domain = $this->clean_jira_domain($jira_domain);
+        
+        if (empty($jira_domain)) {
+            return null;
+        }
+        
+        $url = "https://{$jira_domain}/rest/api/2/user/search?query=" . urlencode($email);
+        $auth_header = $this->get_auth_header();
+        if (!$auth_header) {
+            return null;
+        }
+        
+        $request_headers = array(
+            'Authorization' => $auth_header,
+            'Accept' => 'application/json'
+        );
+        
+        $start_time = microtime(true);
+        
+        $response = $this->make_http_request($url, array(
+            'method' => 'GET',
+            'headers' => $request_headers,
+            'timeout' => 30
+        ));
+        
+        $execution_time = microtime(true) - $start_time;
+        
+        if (is_wp_error($response)) {
+            return null;
+        }
+        
+        $response_code = isset($response['response']['code']) ? $response['response']['code'] : 0;
+        $response_body = isset($response['body']) ? $response['body'] : '';
+        $users = json_decode($response_body, true);
+        
+        if ($response_code !== 200 || !is_array($users)) {
+            return null;
+        }
+        
+        // Find exact email match
+        foreach ($users as $user) {
+            if (isset($user['emailAddress']) && strtolower($user['emailAddress']) === strtolower($email)) {
+                return $user;
+            }
+        }
+        
+        return null;
     }
 }

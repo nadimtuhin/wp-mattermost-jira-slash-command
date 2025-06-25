@@ -30,6 +30,7 @@ class WP_MM_Slash_Jira_Admin {
         register_setting('wp_mm_slash_jira_options', 'wp_mm_slash_jira_api_key');
         register_setting('wp_mm_slash_jira_options', 'wp_mm_slash_jira_webhook_token');
         register_setting('wp_mm_slash_jira_options', 'wp_mm_slash_jira_enable_logging');
+        register_setting('wp_mm_slash_jira_options', 'wp_mm_slash_jira_email_domain');
     }
     
     /**
@@ -164,6 +165,17 @@ class WP_MM_Slash_Jira_Admin {
                                        class="regular-text" id="webhook_token" />
                                 <p class="description">Token to verify webhook requests from Mattermost</p>
                                 <button type="button" class="button button-small" onclick="togglePasswordVisibility('webhook_token')">Show/Hide</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Email Domain</th>
+                            <td>
+                                <input type="text" name="wp_mm_slash_jira_email_domain" 
+                                       value="<?php echo esc_attr(get_option('wp_mm_slash_jira_email_domain')); ?>" 
+                                       class="regular-text" placeholder="company.com" />
+                                <p class="description">Your company's email domain for automatic reporter assignment</p>
+                                <p class="description"><strong>Example:</strong> If set to "company.com", issues created by "john" will automatically assign reporter as "john@company.com"</p>
+                                <p class="description"><strong>Note:</strong> This will automatically find the Jira user and set them as the reporter when creating issues</p>
                             </td>
                         </tr>
                         <tr>
@@ -488,6 +500,7 @@ class WP_MM_Slash_Jira_Admin {
                         <li><code>/jira create Task:Update documentation</code> - Creates task issue with specific type</li>
                         <li><code>/jira create PROJ-123 Add new feature</code> - Creates issue with specific project</li>
                         <li><code>/jira assign PROJ-123 developer@company.com</code> - Assigns issue to user by email</li>
+                        <li><code>/jira find developer@company.com</code> - Search for a user by email address</li>
                         <li><code>/jira bind PROJ</code> - Binds current channel to PROJ project</li>
                         <li><code>/jira status</code> - Shows current project binding and statistics</li>
                         <li><code>/jira link</code> - Get links for creating new tasks</li>
@@ -534,6 +547,16 @@ class WP_MM_Slash_Jira_Admin {
                         <li><strong>Improvement</strong> - Enhancements and improvements</li>
                         <li><strong>New Feature</strong> - New functionality and features</li>
                     </ul>
+                    
+                    <h3>Automatic Reporter Assignment</h3>
+                    <p>When the <strong>Email Domain</strong> setting is configured, the plugin will automatically:</p>
+                    <ul>
+                        <li>Search for Jira users using the pattern <code>username@emaildomain</code></li>
+                        <li>Set the found user as the reporter when creating issues</li>
+                        <li>Display the reporter information in the response</li>
+                        <li>Fall back gracefully if the user is not found in Jira</li>
+                    </ul>
+                    <p><strong>Example:</strong> If email domain is set to "company.com" and user "john" creates an issue, the plugin will search for "john@company.com" in Jira and set that user as the reporter.</p>
                 </div>
             </div>
             

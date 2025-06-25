@@ -60,6 +60,7 @@ function wp_mm_slash_jira_activate() {
     add_option('wp_mm_slash_jira_api_key', '');
     add_option('wp_mm_slash_jira_webhook_token', '');
     add_option('wp_mm_slash_jira_enable_logging', '0');
+    add_option('wp_mm_slash_jira_email_domain', '');
     
     // Create logs table
     $logs_table_name = $wpdb->prefix . 'mm_jira_logs';

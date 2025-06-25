@@ -24,7 +24,10 @@ A WordPress plugin that integrates Mattermost slash commands with Jira for creat
 1. **Jira Domain**: Your Jira domain (e.g., `your-domain.atlassian.net`)
 2. **Jira API Key**: Your Jira API key in format `email:api_token`
 3. **Webhook Token**: A secure token to verify webhook requests from Mattermost
-4. **Enable Logging**: Check this option to store detailed invocation logs for debugging and monitoring
+4. **Email Domain**: Your company's email domain for automatic reporter assignment (e.g., `company.com`)
+5. **Enable Logging**: Check this option to store detailed invocation logs for debugging and monitoring
+
+**Email Domain Feature**: When configured, the plugin will automatically search for Jira users using the pattern `username@emaildomain` and set them as the reporter when creating issues. For example, if the email domain is set to "company.com" and user "john" creates an issue, the plugin will search for "john@company.com" in Jira and set that user as the reporter.
 
 ### 2. Channel Mappings
 
@@ -75,6 +78,7 @@ Configure the slash command in Mattermost:
 - `/jira create Task:Update documentation` - Creates task issue with specific type
 - `/jira create PROJ-123 Add new feature` - Creates issue with specific project
 - `/jira assign PROJ-123 developer@company.com` - Assigns issue to user by email
+- `/jira find developer@company.com` - Search for a user by email address
 - `/jira bind PROJ` - Binds current channel to Jira project
 - `/jira status` - Shows current project binding and statistics
 - `/jira link` - Get links for creating new tasks
@@ -122,6 +126,7 @@ View comprehensive information about any Jira issue:
 /jira create PROJ-456 Add user authentication
 /jira create BUG-789 Database connection timeout
 /jira assign PROJ-123 developer@company.com
+/jira find developer@company.com
 /jira bind PROJ
 /jira status
 /jira link
@@ -155,9 +160,12 @@ Successful issue creation returns:
 **Created by:** @alan
 **Project:** PROJ
 **Type:** Bug
+**Reporter:** John Developer (john@company.com)
 
 [View in Jira](https://your-domain.atlassian.net/browse/PROJ-123)
 ```
+
+**Note:** The Reporter field will only appear when the Email Domain setting is configured and a matching Jira user is found.
 
 ## API Endpoints
 

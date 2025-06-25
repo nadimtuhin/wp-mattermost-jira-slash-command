@@ -476,6 +476,12 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
                         <div class="quick-command assign" data-command="assign PROJ-123 developer@company.com">assign PROJ-123 developer@company.com</div>
                         <div class="quick-command assign" data-command="assign BUG-456 tester@company.com">assign BUG-456 tester@company.com</div>
                         
+                        <!-- User Search Commands -->
+                        <div class="quick-command-category">Find Users</div>
+                        <div class="quick-command assign" data-command="find developer@company.com">find developer@company.com</div>
+                        <div class="quick-command assign" data-command="find tester@company.com">find tester@company.com</div>
+                        <div class="quick-command assign" data-command="find manager@company.com">find manager@company.com</div>
+                        
                         <!-- Channel Management -->
                         <div class="quick-command-category">Channel Management</div>
                         <div class="quick-command manage" data-command="bind PROJ">bind PROJ</div>
@@ -524,6 +530,7 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
                         <div>• <code>/jira bug</code>, <code>/jira task</code>, <code>/jira story</code> - Quick create shortcuts</div>
                         <div>• <code>/jira view PROJ-123</code> - View detailed issue information</div>
                         <div>• <code>/jira assign</code> - Assign issues to users</div>
+                        <div>• <code>/jira find user@example.com</code> - Search for users by email</div>
                         <div>• <code>/jira bind</code> - Bind channels to projects</div>
                         <div>• <code>/jira status</code>, <code>/jira link</code>, <code>/jira board</code> - Channel management</div>
                         <div>• <code>/jira projects</code> - List all available Jira projects</div>
