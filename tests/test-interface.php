@@ -7,7 +7,7 @@
  */
 
 // Load WordPress
-require_once('../../../wp-config.php');
+require_once('../../../../wp-config.php');
 
 // Check if user is logged in and has admin permissions
 if (!is_user_logged_in() || !current_user_can('manage_options')) {

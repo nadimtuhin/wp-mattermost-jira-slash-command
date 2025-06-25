@@ -779,7 +779,7 @@ class WP_MM_Slash_Jira_API {
             )
         );
         
-        $url = "https://{$jira_domain}/rest/api/2/issue";
+        $url = "https://{$jira_domain}/ ";
         $auth_header = $this->get_auth_header();
         if (!$auth_header) {
             return array('success' => false, 'error' => 'Jira API credentials not configured');
