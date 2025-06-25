@@ -116,6 +116,9 @@ class WP_MM_Slash_Jira_API {
                 case 'board':
                     $response = $this->get_jira_board_links($channel_id, $channel_name, $text, $user_name);
                     break;
+                case 'projects':
+                    $response = $this->list_jira_projects($channel_id, $channel_name, $text, $user_name);
+                    break;
                 case 'help':
                     $response = $this->show_help();
                     break;
@@ -898,6 +901,154 @@ class WP_MM_Slash_Jira_API {
     }
     
     /**
+     * List all available Jira projects
+     */
+    private function list_jira_projects($channel_id, $channel_name, $text, $user_name) {
+        $jira_domain = get_option('wp_mm_slash_jira_jira_domain');
+        
+        if (empty($jira_domain)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Jira domain not configured. Please contact an administrator."
+            );
+        }
+        
+        // Clean and validate the Jira domain
+        $jira_domain = $this->clean_jira_domain($jira_domain);
+        
+        if (empty($jira_domain)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Invalid Jira domain format. Please use format: your-domain.atlassian.net"
+            );
+        }
+        
+        $url = "https://{$jira_domain}/rest/api/2/project";
+        $auth_header = $this->get_auth_header();
+        if (!$auth_header) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Jira API credentials not configured. Please contact an administrator."
+            );
+        }
+        
+        $request_headers = array(
+            'Authorization' => $auth_header,
+            'Accept' => 'application/json'
+        );
+        
+        $start_time = microtime(true);
+        
+        $response = wp_remote_get($url, array(
+            'headers' => $request_headers,
+            'timeout' => 30
+        ));
+        
+        $execution_time = microtime(true) - $start_time;
+        
+        if (is_wp_error($response)) {
+            $error_message = $response->get_error_message();
+            $this->logger->log_jira_curl(
+                'GET',
+                $url,
+                $request_headers,
+                '',
+                0,
+                array(),
+                '',
+                $execution_time,
+                'error',
+                $error_message
+            );
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Error fetching projects: " . $error_message
+            );
+        }
+        
+        $response_code = wp_remote_retrieve_response_code($response);
+        $response_headers = wp_remote_retrieve_headers($response);
+        $response_body = wp_remote_retrieve_body($response);
+        $projects = json_decode($response_body, true);
+        
+        // Log the curl payload
+        $status = ($response_code === 200 && is_array($projects)) ? 'success' : 'error';
+        $error_message = null;
+        if ($status === 'error') {
+            $error_message = isset($projects['errorMessages']) ? implode(', ', $projects['errorMessages']) : 'Unknown error';
+        }
+        
+        $this->logger->log_jira_curl(
+            'GET',
+            $url,
+            $request_headers,
+            '',
+            $response_code,
+            $response_headers,
+            $response_body,
+            $execution_time,
+            $status,
+            $error_message
+        );
+        
+        if ($response_code !== 200 || !is_array($projects)) {
+            return array(
+                'response_type' => 'ephemeral',
+                'text' => "❌ Error fetching projects: " . $error_message
+            );
+        }
+        
+        // Sort projects by name
+        usort($projects, function($a, $b) {
+            return strcasecmp($a['name'], $b['name']);
+        });
+        
+        $projects_text = "📋 **Available Jira Projects**\n\n";
+        $projects_text .= "**Total Projects:** " . count($projects) . "\n\n";
+        
+        // Group projects by first letter for better organization
+        $grouped_projects = array();
+        foreach ($projects as $project) {
+            $first_letter = strtoupper(substr($project['name'], 0, 1));
+            if (!isset($grouped_projects[$first_letter])) {
+                $grouped_projects[$first_letter] = array();
+            }
+            $grouped_projects[$first_letter][] = $project;
+        }
+        
+        ksort($grouped_projects);
+        
+        foreach ($grouped_projects as $letter => $letter_projects) {
+            $projects_text .= "**{$letter}**\n";
+            foreach ($letter_projects as $project) {
+                $project_key = $project['key'];
+                $project_name = $project['name'];
+                $project_url = "https://{$jira_domain}/browse/{$project_key}";
+                
+                $projects_text .= "• **{$project_key}** - [{$project_name}]({$project_url})\n";
+            }
+            $projects_text .= "\n";
+        }
+        
+        $projects_text .= "**To bind this channel to a project:**\n";
+        $projects_text .= "• `/jira bind PROJECT-KEY` - Replace PROJECT-KEY with one of the keys above\n\n";
+        $projects_text .= "**To create issues in a specific project:**\n";
+        $projects_text .= "• `/jira create PROJECT-KEY Title` - Create issue in specific project\n";
+        $projects_text .= "• `/jira bug PROJECT-KEY Title` - Create bug in specific project\n";
+        $projects_text .= "• `/jira task PROJECT-KEY Title` - Create task in specific project\n";
+        $projects_text .= "• `/jira story PROJECT-KEY Title` - Create story in specific project\n\n";
+        $projects_text .= "**Other Commands:**\n";
+        $projects_text .= "• `/jira status` - Check current project binding\n";
+        $projects_text .= "• `/jira board` - Get board links for current project\n";
+        $projects_text .= "• `/jira link` - Get issue creation links\n";
+        
+        return array(
+            'response_type' => 'in_channel',
+            'text' => $projects_text
+        );
+    }
+    
+    /**
      * Create issue in Jira via API
      */
     private function create_issue_in_jira($project_key, $title, $user_name, $channel_name, $issue_type = null) {
@@ -1215,7 +1366,8 @@ class WP_MM_Slash_Jira_API {
                      "• `/jira status` - Shows current project binding and statistics\n\n" .
                      "**Get Jira links:**\n" .
                      "• `/jira link` - Get links for creating new tasks\n" .
-                     "• `/jira board` - Get links to Jira boards and backlogs\n\n" .
+                     "• `/jira board` - Get links to Jira boards and backlogs\n" .
+                     "• `/jira projects` - List all available Jira projects\n\n" .
                      "**Examples:**\n" .
                      "• `/jira create Fix login bug`\n" .
                      "• `/jira bug Fix login issue`\n" .

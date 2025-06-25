@@ -492,6 +492,7 @@ class WP_MM_Slash_Jira_Admin {
                         <li><code>/jira status</code> - Shows current project binding and statistics</li>
                         <li><code>/jira link</code> - Get links for creating new tasks</li>
                         <li><code>/jira board</code> - Get links to Jira boards and backlogs</li>
+                        <li><code>/jira projects</code> - List all available Jira projects</li>
                         <li><code>/jira help</code> - Shows help message</li>
                     </ul>
                     

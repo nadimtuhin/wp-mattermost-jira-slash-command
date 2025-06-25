@@ -79,6 +79,7 @@ Configure the slash command in Mattermost:
 - `/jira status` - Shows current project binding and statistics
 - `/jira link` - Get links for creating new tasks
 - `/jira board` - Get links to Jira boards and backlogs
+- `/jira projects` - List all available Jira projects
 - `/jira help` - Shows help message
 
 ### Quick Commands (Shortcuts)
@@ -125,6 +126,7 @@ View comprehensive information about any Jira issue:
 /jira status
 /jira link
 /jira board
+/jira projects
 /jira help
 ```
 

@@ -487,6 +487,7 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
                         <div class="quick-command-category">Links & Help</div>
                         <div class="quick-command manage" data-command="link">link</div>
                         <div class="quick-command manage" data-command="board">board</div>
+                        <div class="quick-command manage" data-command="projects">projects</div>
                         <div class="quick-command manage" data-command="help">help</div>
                     </div>
                 </div>
@@ -525,6 +526,7 @@ $mappings = $wpdb->get_results("SELECT * FROM $table_name ORDER BY channel_name 
                         <div>• <code>/jira assign</code> - Assign issues to users</div>
                         <div>• <code>/jira bind</code> - Bind channels to projects</div>
                         <div>• <code>/jira status</code>, <code>/jira link</code>, <code>/jira board</code> - Channel management</div>
+                        <div>• <code>/jira projects</code> - List all available Jira projects</div>
                         <div>• <code>/jira help</code> - Show all available commands</div>
                         <div class="message-time"><?php echo date('H:i'); ?></div>
                     </div>
