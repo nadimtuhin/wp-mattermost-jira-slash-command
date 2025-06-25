@@ -291,7 +291,16 @@ class WP_MM_Slash_Jira_API {
             if (!$mapping) {
                 return array(
                     'response_type' => 'ephemeral',
-                    'text' => "❌ No Jira project mapped to this channel. Please contact an administrator to set up the mapping or specify a project key in your command (e.g., `/jira create TPFIJB Add new feature` or `/jira create PROJ-123 Task title`)."
+                    'text' => "❌ No Jira project mapped to this channel. Please contact an administrator to set up the mapping or specify a project key in your command (e.g., `/jira create TPFIJB Add new feature` or `/jira create PROJ-123 Task title`).\n\n" .
+                              "**💡 Need to bind this channel to a project?**\n\n" .
+                              "**To see available projects:**\n" .
+                              "• `/jira projects` - List all available Jira projects and their keys\n\n" .
+                              "**To bind this channel to a project:**\n" .
+                              "• `/jira bind PROJECT-KEY` - Replace PROJECT-KEY with one from the projects list\n" .
+                              "• Example: `/jira bind PROJ` or `/jira bind DEV`\n\n" .
+                              "**To create issues without binding:**\n" .
+                              "• `/jira create PROJECT-KEY Title` - Specify project key in command\n" .
+                              "• Example: `/jira create PROJ Fix login bug`"
                 );
             }
             
@@ -873,13 +882,14 @@ class WP_MM_Slash_Jira_API {
                 'text' => "📋 **Channel Status: #{$channel_name}**\n\n" .
                          "❌ **No project binding found**\n\n" .
                          "This channel is not currently mapped to any Jira project.\n\n" .
+                         "**To see available projects:**\n" .
+                         "• `/jira projects` - List all available Jira projects and their keys\n\n" .
                          "**To bind this channel to a project:**\n" .
-                         "• `/jira bind PROJECT-KEY` - Bind to a specific project\n\n" .
+                         "• `/jira bind PROJECT-KEY` - Replace PROJECT-KEY with one from the projects list\n" .
+                         "• Example: `/jira bind PROJ` or `/jira bind DEV`\n\n" .
                          "**To create issues without binding:**\n" .
-                         "• `/jira create PROJ-123 Title` - Specify project in command\n\n" .
-                         "**Examples:**\n" .
-                         "• `/jira bind PROJ` - Bind to PROJ project\n" .
-                         "• `/jira create PROJ-456 Fix login bug` - Create with specific project"
+                         "• `/jira create PROJECT-KEY Title` - Specify project key in command\n" .
+                         "• Example: `/jira create PROJ Fix login bug`"
             );
         }
         
@@ -977,8 +987,14 @@ class WP_MM_Slash_Jira_API {
             $links_text .= "• [Create Issue](https://{$jira_domain}/secure/CreateIssue.jspa)\n";
             $links_text .= "• [View All Projects](https://{$jira_domain}/browse)\n";
             $links_text .= "• [Dashboard](https://{$jira_domain}/secure/Dashboard.jspa)\n\n";
+            $links_text .= "**To see available projects:**\n";
+            $links_text .= "• `/jira projects` - List all available Jira projects and their keys\n\n";
             $links_text .= "**To bind this channel to a project:**\n";
-            $links_text .= "• `/jira bind PROJECT-KEY` - Then use `/jira link` again\n";
+            $links_text .= "• `/jira bind PROJECT-KEY` - Replace PROJECT-KEY with one from the projects list\n";
+            $links_text .= "• Example: `/jira bind PROJ` or `/jira bind DEV`\n\n";
+            $links_text .= "**To create issues without binding:**\n";
+            $links_text .= "• `/jira create PROJECT-KEY Title` - Specify project key in command\n";
+            $links_text .= "• Example: `/jira create PROJ Fix login bug`";
         }
         
         $links_text .= "**Other Commands:**\n";
@@ -1039,8 +1055,14 @@ class WP_MM_Slash_Jira_API {
             $board_text .= "• [All Boards](https://{$jira_domain}/secure/RapidBoard.jspa)\n";
             $board_text .= "• [Project Boards](https://{$jira_domain}/secure/BrowseProjects.jspa)\n";
             $board_text .= "• [Dashboard](https://{$jira_domain}/secure/Dashboard.jspa)\n\n";
+            $board_text .= "**To see available projects:**\n";
+            $board_text .= "• `/jira projects` - List all available Jira projects and their keys\n\n";
             $board_text .= "**To bind this channel to a project:**\n";
-            $board_text .= "• `/jira bind PROJECT-KEY` - Then use `/jira board` again\n";
+            $board_text .= "• `/jira bind PROJECT-KEY` - Replace PROJECT-KEY with one from the projects list\n";
+            $board_text .= "• Example: `/jira bind PROJ` or `/jira bind DEV`\n\n";
+            $board_text .= "**To create issues without binding:**\n";
+            $board_text .= "• `/jira create PROJECT-KEY Title` - Specify project key in command\n";
+            $board_text .= "• Example: `/jira create PROJ Fix login bug`";
         }
         
         $board_text .= "**Other Commands:**\n";
@@ -1717,58 +1739,46 @@ class WP_MM_Slash_Jira_API {
      * Show help message
      */
     private function show_help() {
+        $help_text = "**🚀 Getting Started with Jira**\n\n" .
+                     "**Quick Start (Most Common):**\n" .
+                     "1. **See available projects:** `/jira projects`\n" .
+                     "2. **Bind this channel:** `/jira bind PROJECT-KEY` (e.g., `/jira bind PROJ`)\n" .
+                     "3. **Create an issue:** `/jira create Fix login bug`\n\n" .
+                     "**💡 If you get an error about no project mapping:**\n" .
+                     "• Run `/jira projects` to see what projects are available\n" .
+                     "• Then run `/jira bind PROJECT-KEY` with one of the project keys\n" .
+                     "• Or specify the project in your command: `/jira create PROJ Fix login bug`\n\n" .
+                     "---\n\n" .
+                     "**📝 Create Issues (3 ways):**\n" .
+                     "**Simple:** `/jira create Fix login bug` (uses channel's project)\n" .
+                     "**With project:** `/jira create PROJ Fix login bug`\n" .
+                     "**With type:** `/jira create Bug:Fix login bug`\n\n" .
+                     "**⚡ Quick shortcuts:**\n" .
+                     "• `/jira bug Fix login issue` - Create bug\n" .
+                     "• `/jira task Update docs` - Create task\n" .
+                     "• `/jira story Add feature` - Create story\n\n" .
+                     "**🔍 View & Manage Issues:**\n" .
+                     "• `/jira view PROJ-123` - View issue details\n" .
+                     "• `/jira assign PROJ-123 user@company.com` - Assign issue\n" .
+                     "• `/jira find user@company.com` - Find Jira user\n\n" .
+                     "**⚙️ Channel Management:**\n" .
+                     "• `/jira bind PROJ` - Bind channel to project\n" .
+                     "• `/jira unbind` - Remove project binding\n" .
+                     "• `/jira status` - Check current binding\n\n" .
+                     "**🔗 Useful Links:**\n" .
+                     "• `/jira projects` - List all projects\n" .
+                     "• `/jira link` - Get Jira links\n" .
+                     "• `/jira board` - Get board links\n\n" .
+                     "**📋 Examples:**\n" .
+                     "• `/jira create Fix login bug`\n" .
+                     "• `/jira bug PROJ Fix login issue`\n" .
+                     "• `/jira view PROJ-123`\n" .
+                     "• `/jira bind PROJ`\n\n" .
+                     "**Need more help?** Run `/jira help` again or contact your administrator.";
+        
         return array(
             'response_type' => 'ephemeral',
-            'text' => "**Jira Slash Command Help**\n\n" .
-                     "**Create an issue:**\n" .
-                     "• `/jira create Title` - Creates issue in mapped project\n" .
-                     "• `/jira create PROJECT-KEY Title` - Creates issue with specific project key\n" .
-                     "• `/jira create PROJ-123 Title` - Creates issue with specific project key (legacy format)\n" .
-                     "• `/jira create TYPE:Title` - Creates issue with specific type (Task, Bug, Story, Epic, etc.)\n" .
-                     "• `/jira create PROJECT-KEY TYPE:Title` - Creates issue with specific project and type\n\n" .
-                     "**Quick issue creation (shortcuts):**\n" .
-                     "• `/jira bug Title` - Creates a bug issue\n" .
-                     "• `/jira bug PROJECT-KEY Title` - Creates a bug issue in specific project\n" .
-                     "• `/jira task Title` - Creates a task issue\n" .
-                     "• `/jira task PROJECT-KEY Title` - Creates a task issue in specific project\n" .
-                     "• `/jira story Title` - Creates a story issue\n" .
-                     "• `/jira story PROJECT-KEY Title` - Creates a story issue in specific project\n\n" .
-                     "**View issue details:**\n" .
-                     "• `/jira view PROJ-123` - View detailed information about an issue\n\n" .
-                     "**Assign an issue:**\n" .
-                     "• `/jira assign PROJ-123 user@example.com` - Assigns issue to user by email\n\n" .
-                     "**Find a user:**\n" .
-                     "• `/jira find user@example.com` - Search for a user by email address\n\n" .
-                     "**Bind channel to project:**\n" .
-                     "• `/jira bind PROJECT-KEY` - Binds current channel to Jira project\n\n" .
-                     "**Unbind channel from project:**\n" .
-                     "• `/jira unbind` - Removes current channel's project binding\n\n" .
-                     "**Check channel status:**\n" .
-                     "• `/jira status` - Shows current project binding and statistics\n\n" .
-                     "**Get Jira links:**\n" .
-                     "• `/jira link` - Get links for creating new tasks\n" .
-                     "• `/jira board` - Get links to Jira boards and backlogs\n" .
-                     "• `/jira projects` - List all available Jira projects\n\n" .
-                     "**Examples:**\n" .
-                     "• `/jira create Fix login bug`\n" .
-                     "• `/jira bug Fix login issue`\n" .
-                     "• `/jira task Update documentation`\n" .
-                     "• `/jira story Add new feature`\n" .
-                     "• `/jira view PROJ-123` - View issue details\n" .
-                     "• `/jira create Bug:Fix login bug`\n" .
-                     "• `/jira create PROJ Story:Add new feature`\n" .
-                     "• `/jira create Task:Update documentation`\n" .
-                     "• `/jira create TPFIJB Add new feature`\n" .
-                     "• `/jira create PROJ-456 Add new feature`\n" .
-                     "• `/jira assign PROJ-123 developer@company.com`\n" .
-                     "• `/jira bind PROJ` - Bind channel to PROJ project\n" .
-                     "• `/jira unbind` - Remove channel's project binding\n" .
-                     "• `/jira status` - Check current binding status\n" .
-                     "• `/jira link` - Get task creation links\n" .
-                     "• `/jira board` - Get board links\n\n" .
-                     "**Available Issue Types:**\n" .
-                     "• Task, Bug, Story, Epic, Subtask, Improvement, New Feature\n\n" .
-                     "**Note:** If no project key is specified, the issue will be created in the project mapped to this channel. If no issue type is specified, it will be determined automatically based on the channel name or default to 'Task'."
+            'text' => $help_text
         );
     }
     
